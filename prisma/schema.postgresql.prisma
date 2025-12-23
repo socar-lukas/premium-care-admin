@@ -1,0 +1,80 @@
+// PostgreSQL용 스키마 (Supabase 배포 시 사용)
+// 사용법: 이 파일을 schema.prisma로 복사하거나
+// 배포 시 DATABASE_URL이 postgresql://로 시작하면 자동으로 PostgreSQL 사용
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Vehicle {
+  id            String        @id @default(uuid())
+  vehicleNumber String        @unique
+  ownerName     String
+  model         String?
+  manufacturer  String?
+  year          Int?
+  contact       String?
+  vehicleType   String?
+  memo          String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  inspections   Inspection[]
+
+  @@index([vehicleNumber])
+  @@index([ownerName])
+}
+
+model Inspection {
+  id              String            @id @default(uuid())
+  vehicleId       String
+  vehicle         Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  inspectionDate  DateTime
+  inspectionType  String            // 세차전, 세차후, 정기점검, 수리 등
+  overallStatus   String            // 우수, 양호, 보통, 불량
+  inspector       String?
+  memo            String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  areas           InspectionArea[]
+
+  @@index([vehicleId])
+  @@index([inspectionDate])
+}
+
+model InspectionArea {
+  id            String            @id @default(uuid())
+  inspectionId  String
+  inspection    Inspection        @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  areaCategory  String            // 외부, 내부, 엔진실, 타이어, 기타
+  areaName      String
+  status        String            // 우수, 양호, 보통, 불량, 수리필요
+  memo          String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  photos        InspectionPhoto[]
+
+  @@index([inspectionId])
+}
+
+model InspectionPhoto {
+  id                String          @id @default(uuid())
+  inspectionAreaId  String
+  inspectionArea    InspectionArea  @relation(fields: [inspectionAreaId], references: [id], onDelete: Cascade)
+  fileName          String
+  originalFileName  String
+  filePath          String
+  googleDriveFileId String?
+  googleDriveUrl    String?
+  fileSize          Int
+  mimeType          String
+  description       String?
+  uploadedAt        DateTime        @default(now())
+
+  @@index([inspectionAreaId])
+}
+
