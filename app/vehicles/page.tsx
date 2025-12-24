@@ -89,7 +89,7 @@ export default function VehiclesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%)' }}>
       <nav className="glass-card sticky top-0 z-30 border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-14 md:h-16 items-center">
@@ -170,7 +170,7 @@ export default function VehiclesPage() {
                         <div className="flex gap-2">
                           <Link
                             href={`/vehicles/${vehicle.id}`}
-                            className="px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs rounded-lg font-semibold shadow-md"
+                            className="px-3 py-2 text-white text-xs rounded-lg font-semibold shadow-md" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}
                           >
                             상세
                           </Link>
@@ -303,7 +303,7 @@ export default function VehiclesPage() {
                     >
                       이전
                     </button>
-                    <span className="px-5 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-semibold">
+                    <span className="px-5 py-2 text-white rounded-xl font-semibold" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
                       {page} / {totalPages}
                     </span>
                     <button

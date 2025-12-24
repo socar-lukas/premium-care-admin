@@ -98,7 +98,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%)' }}>
       <nav className="glass-card sticky top-0 z-30 border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-14 md:h-16 items-center">
@@ -111,7 +111,7 @@ export default function Home() {
             <div className="hidden md:flex gap-3">
               <Link
                 href="/vehicles"
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 rounded-lg hover:bg-white/50 transition-all duration-200"
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-[#0078FF] rounded-lg hover:bg-[#EBF5FF] transition-all duration-200"
               >
                 차량 목록
               </Link>
@@ -133,10 +133,10 @@ export default function Home() {
         {/* 통계 카드 */}
         <div className="grid grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8 animate-fade-in-up">
           <div className="stat-card rounded-2xl p-5 md:p-7 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-2xl"></div>
+            <div className="absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl" style={{ background: 'rgba(102, 176, 255, 0.25)' }}></div>
             <div className="relative">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
@@ -144,23 +144,23 @@ export default function Home() {
                 </div>
                 <h3 className="text-xs md:text-sm font-semibold text-gray-600">전체 차량</h3>
               </div>
-              <p className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <p className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 {stats.totalVehicles}
               </p>
             </div>
           </div>
           <div className="stat-card rounded-2xl p-5 md:p-7 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-400/20 to-emerald-400/20 rounded-full blur-2xl"></div>
+            <div className="absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl" style={{ background: 'rgba(51, 147, 255, 0.2)' }}></div>
             <div className="relative">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #3393FF 0%, #0078FF 100%)' }}>
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
                 </div>
                 <h3 className="text-xs md:text-sm font-semibold text-gray-600">오늘 점검</h3>
               </div>
-              <p className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+              <p className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, #3393FF 0%, #0078FF 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 {stats.recentInspections}
               </p>
             </div>
@@ -216,7 +216,7 @@ export default function Home() {
                             {vehicle.ownerName}
                           </p>
                         </div>
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
                           <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>

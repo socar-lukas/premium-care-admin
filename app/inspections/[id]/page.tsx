@@ -128,11 +128,12 @@ export default function InspectionDetailPage({
                 inspection.overallStatus === '우수'
                   ? 'bg-green-100 text-green-800'
                   : inspection.overallStatus === '양호'
-                  ? 'bg-blue-100 text-blue-800'
+                  ? 'text-[#005AFF]'
                   : inspection.overallStatus === '보통'
                   ? 'bg-yellow-100 text-yellow-800'
                   : 'bg-red-100 text-red-800'
               }`}
+              style={inspection.overallStatus === '양호' ? { backgroundColor: '#EBF5FF' } : undefined}
             >
               {inspection.overallStatus}
             </span>
@@ -187,11 +188,12 @@ export default function InspectionDetailPage({
                             area.status === '우수'
                               ? 'bg-green-100 text-green-800'
                               : area.status === '양호'
-                              ? 'bg-blue-100 text-blue-800'
+                              ? 'text-[#005AFF]'
                               : area.status === '보통'
                               ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-red-100 text-red-800'
                           }`}
+                          style={area.status === '양호' ? { backgroundColor: '#EBF5FF' } : undefined}
                         >
                           {area.status}
                         </span>
@@ -200,7 +202,7 @@ export default function InspectionDetailPage({
                             setSelectedArea(area.id);
                             setShowPhotoUpload(true);
                           }}
-                          className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                          className="px-3 py-1 text-white rounded text-sm transition-all duration-200" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, #005AFF 0%, #0041E6 100%)'} onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)'}
                         >
                           사진 추가
                         </button>
@@ -385,7 +387,8 @@ function PhotoUploadModal({
               multiple
               accept="image/*"
               onChange={handleFileChange}
-              className="w-full px-4 py-3 md:py-2 text-base md:text-sm border border-gray-300 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              className="w-full px-4 py-3 md:py-2 text-base md:text-sm border border-gray-300 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold hover:file:bg-[#D6EBFF]"
+              style={{ '--file-bg': '#EBF5FF', '--file-text': '#0078FF' } as React.CSSProperties}
             />
           </div>
 
@@ -440,7 +443,7 @@ function PhotoUploadModal({
             <button
               type="submit"
               disabled={uploading || files.length === 0}
-              className="w-full sm:w-auto px-6 py-3 md:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium text-base md:text-sm"
+              className="w-full sm:w-auto px-6 py-3 md:py-2 text-white rounded-lg disabled:opacity-50 font-medium text-base md:text-sm transition-all duration-200" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }} onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.background = 'linear-gradient(135deg, #005AFF 0%, #0041E6 100%)')} onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)'}
             >
               {uploading ? '업로드 중...' : `${files.length}개 사진 업로드`}
             </button>

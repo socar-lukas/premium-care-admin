@@ -93,7 +93,7 @@ export default function VehicleDetailPage({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%)' }}>
       <nav className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
@@ -112,7 +112,7 @@ export default function VehicleDetailPage({
               </Link>
               <button
                 onClick={() => setShowInspectionForm(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                className="px-4 py-2 text-white rounded-md text-sm font-medium transition-all duration-200" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, #005AFF 0%, #0041E6 100%)'} onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)'}
               >
                 점검 기록 추가
               </button>
@@ -221,11 +221,12 @@ export default function VehicleDetailPage({
                                     area.status === '우수'
                                       ? 'bg-green-100 text-green-800'
                                       : area.status === '양호'
-                                      ? 'bg-blue-100 text-blue-800'
+                                      ? 'text-[#005AFF]'
                                       : area.status === '보통'
                                       ? 'bg-yellow-100 text-yellow-800'
                                       : 'bg-red-100 text-red-800'
                                   }`}
+                                  style={area.status === '양호' ? { backgroundColor: '#EBF5FF' } : undefined}
                                 >
                                   {area.status}
                                 </span>
@@ -668,7 +669,8 @@ function InspectionFormModal({
                       multiple
                       accept="image/*"
                       onChange={(e) => handlePhotoChange(index, e)}
-                      className="w-full px-3 py-3 md:py-2 text-base md:text-sm border border-gray-300 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      className="w-full px-3 py-3 md:py-2 text-base md:text-sm border border-gray-300 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold hover:file:bg-[#D6EBFF]"
+                      style={{ '--file-bg': '#EBF5FF', '--file-text': '#0078FF' } as React.CSSProperties}
                     />
                     {area.photoPreviews.length > 0 && (
                       <div className="mt-2 grid grid-cols-4 gap-2">
@@ -712,7 +714,7 @@ function InspectionFormModal({
             <button
               type="submit"
               disabled={loading}
-              className="w-full sm:w-auto px-6 py-3 md:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium text-base md:text-sm"
+              className="w-full sm:w-auto px-6 py-3 md:py-2 text-white rounded-lg disabled:opacity-50 font-medium text-base md:text-sm transition-all duration-200" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }} onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.background = 'linear-gradient(135deg, #005AFF 0%, #0041E6 100%)')} onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)'}
             >
               {loading ? '등록 중...' : '등록'}
             </button>
