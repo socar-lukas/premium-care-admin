@@ -15,20 +15,25 @@ export default function SocarLogo({ className = '' }: { className?: string }) {
       const handleLoadedData = () => {
         setIsLoaded(true);
         setHasError(false);
-        video.play().catch(() => {
-          // 자동 재생 실패 시 무시
+        video.play().catch((err) => {
+          console.log('Video play error:', err);
+          // 자동 재생 실패해도 비디오는 표시
+          setIsLoaded(true);
         });
       };
 
       const handleCanPlay = () => {
         setIsLoaded(true);
         setHasError(false);
-        video.play().catch(() => {
-          // 자동 재생 실패 시 무시
+        video.play().catch((err) => {
+          console.log('Video play error:', err);
+          // 자동 재생 실패해도 비디오는 표시
+          setIsLoaded(true);
         });
       };
 
-      const handleError = () => {
+      const handleError = (e: Event) => {
+        console.error('Video load error:', e);
         setHasError(true);
         setIsLoaded(false);
       };
@@ -38,24 +43,37 @@ export default function SocarLogo({ className = '' }: { className?: string }) {
         setHasError(false);
       };
 
+      const handleLoadedMetadata = () => {
+        setIsLoaded(true);
+        setHasError(false);
+        video.play().catch(() => {
+          // 자동 재생 실패해도 비디오는 표시
+          setIsLoaded(true);
+        });
+      };
+
       video.addEventListener('loadeddata', handleLoadedData);
       video.addEventListener('canplay', handleCanPlay);
+      video.addEventListener('canplaythrough', handleCanPlay);
       video.addEventListener('error', handleError);
       video.addEventListener('loadstart', handleLoadStart);
+      video.addEventListener('loadedmetadata', handleLoadedMetadata);
       
       // 이미 로드된 경우
       if (video.readyState >= 2) {
         handleLoadedData();
+      } else {
+        // 강제로 로드 시도
+        video.load();
       }
-
-      // 강제로 로드 시도
-      video.load();
 
       return () => {
         video.removeEventListener('loadeddata', handleLoadedData);
         video.removeEventListener('canplay', handleCanPlay);
+        video.removeEventListener('canplaythrough', handleCanPlay);
         video.removeEventListener('error', handleError);
         video.removeEventListener('loadstart', handleLoadStart);
+        video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       };
     }
   }, []);
@@ -73,6 +91,8 @@ export default function SocarLogo({ className = '' }: { className?: string }) {
               muted
               playsInline
               preload="auto"
+              webkit-playsinline="true"
+              x5-playsinline="true"
               className="h-full w-full object-cover"
               style={{
                 display: isLoaded ? 'block' : 'none',
@@ -80,6 +100,9 @@ export default function SocarLogo({ className = '' }: { className?: string }) {
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
+                position: 'absolute',
+                top: 0,
+                left: 0,
               }}
             >
               <source 
@@ -87,8 +110,8 @@ export default function SocarLogo({ className = '' }: { className?: string }) {
                 type="video/mp4" 
               />
             </video>
-            {!isLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white rounded-full">
+            {!isLoaded && !hasError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white rounded-full z-10">
                 <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
               </div>
             )}

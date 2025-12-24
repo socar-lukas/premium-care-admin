@@ -99,7 +99,7 @@ export default function VehicleDetailPage({
           <div className="flex justify-between h-16 items-center">
             <Link href="/vehicles" className="flex items-center gap-3">
               <SocarLogo />
-              <span className="text-xl md:text-2xl font-bold text-gray-900">
+              <span className="text-base md:text-lg font-bold text-gray-900">
                 Socar Premium Admin
               </span>
             </Link>

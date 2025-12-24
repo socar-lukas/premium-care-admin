@@ -57,20 +57,25 @@ export default function MobileNav() {
       {/* 모바일 메뉴 오버레이 */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-60 z-[60] md:hidden"
+          className="fixed inset-0 bg-black bg-opacity-70 z-[9998] md:hidden"
           onClick={() => setIsOpen(false)}
+          style={{ pointerEvents: 'auto' }}
         />
       )}
 
       {/* 모바일 메뉴 */}
       <div
-        className={`fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out md:hidden border-l border-gray-200 ${
+        className={`fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-[9999] transform transition-transform duration-300 ease-in-out md:hidden border-l border-gray-200 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
+        style={{ 
+          backgroundColor: '#ffffff',
+          pointerEvents: 'auto',
+        }}
       >
-        <div className="p-5 border-b border-white/20 bg-gradient-to-r from-blue-50 to-purple-50">
+        <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">메뉴</h2>
+            <h2 className="text-lg font-bold text-gray-900">메뉴</h2>
             <button
               onClick={() => setIsOpen(false)}
               className="p-2 rounded-lg text-gray-700 hover:bg-white/50 transition-colors"
@@ -89,11 +94,11 @@ export default function MobileNav() {
             </button>
           </div>
         </div>
-        <nav className="p-4 space-y-2">
+        <nav className="p-4 space-y-2 bg-white">
           <Link
             href="/"
             onClick={() => setIsOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 font-medium transition-all duration-200"
+            className="flex items-center gap-3 px-4 py-3 text-gray-900 rounded-xl hover:bg-blue-50 font-medium transition-all duration-200 bg-white"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -103,7 +108,7 @@ export default function MobileNav() {
           <Link
             href="/vehicles"
             onClick={() => setIsOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 font-medium transition-all duration-200"
+            className="flex items-center gap-3 px-4 py-3 text-gray-900 rounded-xl hover:bg-blue-50 font-medium transition-all duration-200 bg-white"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
