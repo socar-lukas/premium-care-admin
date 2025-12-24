@@ -64,7 +64,7 @@ export default function MobileNav() {
 
       {/* 모바일 메뉴 */}
       <div
-        className={`fixed top-0 right-0 h-full w-72 bg-white/98 backdrop-blur-xl shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out md:hidden border-l border-white/20 ${
+        className={`fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out md:hidden border-l border-gray-200 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
