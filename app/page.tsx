@@ -105,7 +105,7 @@ export default function Home() {
             <div className="flex items-center gap-3">
               <SocarLogo />
               <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                프리미엄 차량 관리
+                Socar Premium Admin
               </h1>
             </div>
             <div className="hidden md:flex gap-3">

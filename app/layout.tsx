@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "프리미엄 차량 관리 어드민",
+  title: "Socar Premium Admin",
   description: "차량 세차 및 관리 서비스 어드민 시스템",
 };
 

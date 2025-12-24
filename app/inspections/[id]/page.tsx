@@ -96,7 +96,7 @@ export default function InspectionDetailPage({
             >
               <SocarLogo />
               <span className="text-xl md:text-2xl font-bold text-gray-900">
-                프리미엄 차량 관리
+                Socar Premium Admin
               </span>
             </Link>
             <div className="flex gap-4">
@@ -384,7 +384,6 @@ function PhotoUploadModal({
               type="file"
               multiple
               accept="image/*"
-              capture="environment"
               onChange={handleFileChange}
               className="w-full px-4 py-3 md:py-2 text-base md:text-sm border border-gray-300 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
             />

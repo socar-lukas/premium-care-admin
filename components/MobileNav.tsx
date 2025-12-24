@@ -1,17 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function MobileNav() {
   const [isOpen, setIsOpen] = useState(false);
+
+  // 메뉴가 열릴 때 body 스크롤 방지
+  useEffect(() => {
+    if (isOpen) {
+      // body 스크롤 방지
+      document.body.style.overflow = 'hidden';
+      // iOS Safari를 위한 추가 처리
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    } else {
+      // 스크롤 복원
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    }
+
+    return () => {
+      // 컴포넌트 언마운트 시 스크롤 복원
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    };
+  }, [isOpen]);
 
   return (
     <>
       {/* 모바일 햄버거 버튼 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100"
+        className="md:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100 z-50 relative"
         aria-label="메뉴"
       >
         <svg
@@ -34,14 +57,14 @@ export default function MobileNav() {
       {/* 모바일 메뉴 오버레이 */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          className="fixed inset-0 bg-black bg-opacity-60 z-[60] md:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       {/* 모바일 메뉴 */}
       <div
-        className={`fixed top-0 right-0 h-full w-72 bg-white/95 backdrop-blur-xl shadow-2xl z-50 transform transition-transform duration-300 ease-in-out md:hidden border-l border-white/20 ${
+        className={`fixed top-0 right-0 h-full w-72 bg-white/98 backdrop-blur-xl shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out md:hidden border-l border-white/20 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
