@@ -30,6 +30,28 @@ export default function Home() {
     fetchStats();
   }, [search]);
 
+  // 페이지 포커스 시 데이터 새로고침
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchVehicles();
+      fetchStats();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
+  // 페이지 로드 시 데이터 새로고침 (다른 페이지에서 돌아왔을 때)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchVehicles();
+        fetchStats();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   const fetchVehicles = async () => {
     try {
       const params = new URLSearchParams();
@@ -50,10 +72,12 @@ export default function Home() {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
       
       const [vehiclesRes, inspectionsRes] = await Promise.all([
         fetch('/api/vehicles?limit=1'),
-        fetch(`/api/inspections?startDate=${today.toISOString()}`),
+        fetch(`/api/inspections?startDate=${today.toISOString()}&endDate=${tomorrow.toISOString()}`),
       ]);
 
       const vehiclesData = await vehiclesRes.json();
@@ -65,6 +89,11 @@ export default function Home() {
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
+      // 오류 발생 시에도 기본값 설정
+      setStats({
+        totalVehicles: vehicles.length,
+        recentInspections: 0,
+      });
     }
   };
 

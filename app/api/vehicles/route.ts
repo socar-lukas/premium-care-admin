@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
     const where = search
       ? {
           OR: [
-            { vehicleNumber: { contains: search } },
-            { ownerName: { contains: search } },
+            { vehicleNumber: { contains: search, mode: 'insensitive' } },
+            { ownerName: { contains: search, mode: 'insensitive' } },
           ],
         }
       : {};
@@ -48,6 +48,8 @@ export async function GET(request: NextRequest) {
       prisma.vehicle.count({ where }),
     ]);
 
+    console.log(`[GET /api/vehicles] Found ${vehicles.length} vehicles, total: ${total}`);
+
     return NextResponse.json({
       vehicles,
       pagination: {
@@ -59,8 +61,16 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching vehicles:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorDetails = error instanceof Error ? error.stack : String(error);
+    console.error('Error details:', errorDetails);
+    
     return NextResponse.json(
-      { error: 'Failed to fetch vehicles' },
+      { 
+        error: 'Failed to fetch vehicles',
+        message: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? errorDetails : undefined,
+      },
       { status: 500 }
     );
   }
@@ -87,6 +97,8 @@ export async function POST(request: NextRequest) {
     const vehicle = await prisma.vehicle.create({
       data,
     });
+
+    console.log(`[POST /api/vehicles] Created vehicle: ${vehicle.id} - ${vehicle.vehicleNumber}`);
 
     return NextResponse.json(vehicle, { status: 201 });
   } catch (error) {

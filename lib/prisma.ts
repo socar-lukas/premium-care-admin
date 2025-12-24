@@ -5,7 +5,17 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 // DATABASE_URL이 없으면 기본값 사용
-const databaseUrl = process.env.DATABASE_URL || 'file:./dev.db';
+let databaseUrl = process.env.DATABASE_URL || 'file:./dev.db';
+
+// PostgreSQL Connection Pooler 사용 시 pgbouncer 파라미터 추가
+if (databaseUrl.startsWith('postgres://') || databaseUrl.startsWith('postgresql://')) {
+  // 이미 pgbouncer 파라미터가 없으면 추가
+  if (!databaseUrl.includes('pgbouncer=true') && !databaseUrl.includes('?')) {
+    databaseUrl = `${databaseUrl}?pgbouncer=true&connect_timeout=10`;
+  } else if (!databaseUrl.includes('pgbouncer=true')) {
+    databaseUrl = `${databaseUrl}&pgbouncer=true&connect_timeout=10`;
+  }
+}
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({
   datasources: {
@@ -13,6 +23,7 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
       url: databaseUrl,
     },
   },
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
 });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;

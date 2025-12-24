@@ -26,6 +26,7 @@ model Vehicle {
 
   @@index([vehicleNumber])
   @@index([ownerName])
+  @@map("Vehicle")
 }
 
 model Inspection {
@@ -43,6 +44,7 @@ model Inspection {
 
   @@index([vehicleId])
   @@index([inspectionDate])
+  @@map("Inspection")
 }
 
 model InspectionArea {
@@ -58,6 +60,7 @@ model InspectionArea {
   photos        InspectionPhoto[]
 
   @@index([inspectionId])
+  @@map("InspectionArea")
 }
 
 model InspectionPhoto {
@@ -75,6 +78,7 @@ model InspectionPhoto {
   uploadedAt        DateTime        @default(now())
 
   @@index([inspectionAreaId])
+  @@map("InspectionPhoto")
 }
 
 

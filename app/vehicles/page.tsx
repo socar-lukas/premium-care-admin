@@ -38,11 +38,30 @@ export default function VehiclesPage() {
       params.append('limit', '20');
 
       const res = await fetch(`/api/vehicles?${params}`);
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('API error:', res.status, errorData);
+        alert(`차량 목록을 불러오는데 실패했습니다: ${errorData.error || res.statusText}`);
+        return;
+      }
+
       const data = await res.json();
-      setVehicles(data.vehicles || []);
-      setTotalPages(data.pagination?.totalPages || 1);
+      console.log('Fetched vehicles:', data);
+      
+      if (data.vehicles) {
+        setVehicles(data.vehicles);
+        setTotalPages(data.pagination?.totalPages || 1);
+      } else {
+        console.warn('No vehicles array in response:', data);
+        setVehicles([]);
+        setTotalPages(1);
+      }
     } catch (error) {
       console.error('Error fetching vehicles:', error);
+      alert('차량 목록을 불러오는데 실패했습니다. 네트워크 연결을 확인해주세요.');
+      setVehicles([]);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }

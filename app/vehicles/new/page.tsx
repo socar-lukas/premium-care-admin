@@ -37,7 +37,10 @@ export default function NewVehiclePage() {
 
       if (res.ok) {
         const vehicle = await res.json();
-        router.push(`/vehicles/${vehicle.id}`);
+        // 성공 후 대시보드로 이동 (데이터 새로고침을 위해)
+        router.push('/');
+        // 또는 차량 상세 페이지로 이동
+        // router.push(`/vehicles/${vehicle.id}`);
       } else {
         const error = await res.json();
         const errorMessage = error.error || error.message || '등록에 실패했습니다.';
