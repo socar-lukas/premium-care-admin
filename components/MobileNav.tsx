@@ -57,7 +57,7 @@ export default function MobileNav() {
       {/* 모바일 메뉴 오버레이 */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-70 z-[9998] md:hidden"
+          className="fixed inset-0 bg-gray-900 bg-opacity-80 z-[9998] md:hidden"
           onClick={() => setIsOpen(false)}
           style={{ pointerEvents: 'auto' }}
         />
@@ -65,15 +65,17 @@ export default function MobileNav() {
 
       {/* 모바일 메뉴 */}
       <div
-        className={`fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-[9999] transform transition-transform duration-300 ease-in-out md:hidden border-l border-gray-200 ${
+        className={`fixed top-0 right-0 h-screen w-72 bg-white shadow-2xl z-[9999] transform transition-transform duration-300 ease-in-out md:hidden border-l border-gray-200 flex flex-col ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         style={{ 
           backgroundColor: '#ffffff',
           pointerEvents: 'auto',
+          height: '100vh',
+          maxHeight: '100vh',
         }}
       >
-        <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+        <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50 flex-shrink-0">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-bold text-gray-900">메뉴</h2>
             <button
@@ -94,7 +96,7 @@ export default function MobileNav() {
             </button>
           </div>
         </div>
-        <nav className="p-4 space-y-2 bg-white">
+        <nav className="p-4 space-y-2 bg-white flex-1 overflow-y-auto">
           <Link
             href="/"
             onClick={() => setIsOpen(false)}
