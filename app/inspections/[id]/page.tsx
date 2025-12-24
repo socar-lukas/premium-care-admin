@@ -219,31 +219,37 @@ export default function InspectionDetailPage({
                             className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer group"
                             onClick={() => setSelectedPhoto(photo)}
                           >
-                            {photo.filePath ? (
-                              <img
-                                src={photo.filePath.startsWith('http') ? photo.filePath : photo.filePath}
-                                alt={photo.originalFileName}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  // 로컬 파일 로드 실패 시 구글 드라이브 URL 시도
-                                  if (photo.googleDriveUrl && e.currentTarget.src !== photo.googleDriveUrl) {
-                                    e.currentTarget.src = photo.googleDriveUrl;
-                                  } else {
-                                    e.currentTarget.style.display = 'none';
-                                  }
-                                }}
-                              />
-                            ) : photo.googleDriveUrl ? (
-                              <img
-                                src={photo.googleDriveUrl}
-                                alt={photo.originalFileName}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                                {photo.originalFileName}
-                              </div>
-                            )}
+                            {(() => {
+                              // Vercel 환경에서는 Google Drive URL 우선 사용
+                              const imageUrl = photo.googleDriveUrl || 
+                                (photo.filePath?.startsWith('http') ? photo.filePath : null) ||
+                                (photo.filePath && !photo.filePath.startsWith('/uploads') ? photo.filePath : null);
+                              
+                              if (imageUrl) {
+                                return (
+                                  <img
+                                    src={imageUrl}
+                                    alt={photo.originalFileName}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      // Google Drive URL이 있으면 시도
+                                      if (photo.googleDriveUrl && e.currentTarget.src !== photo.googleDriveUrl) {
+                                        e.currentTarget.src = photo.googleDriveUrl;
+                                      } else if (photo.filePath && photo.filePath.startsWith('http') && e.currentTarget.src !== photo.filePath) {
+                                        e.currentTarget.src = photo.filePath;
+                                      } else {
+                                        e.currentTarget.style.display = 'none';
+                                      }
+                                    }}
+                                  />
+                                );
+                              }
+                              return (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                  {photo.originalFileName}
+                                </div>
+                              );
+                            })()}
                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity flex items-center justify-center">
                               <span className="text-white text-sm opacity-0 group-hover:opacity-100">
                                 클릭하여 확대
@@ -466,31 +472,35 @@ function PhotoViewerModal({
           >
             ✕
           </button>
-          {photo.filePath ? (
-            <img
-              src={photo.filePath.startsWith('http') ? photo.filePath : photo.filePath}
-              alt={photo.originalFileName}
-              className="w-full h-auto max-h-[90vh] object-contain"
-              onClick={(e) => e.stopPropagation()}
-              onError={(e) => {
-                // 로컬 파일 로드 실패 시 구글 드라이브 URL 시도
-                if (photo.googleDriveUrl && e.currentTarget.src !== photo.googleDriveUrl) {
-                  e.currentTarget.src = photo.googleDriveUrl;
-                }
-              }}
-            />
-          ) : photo.googleDriveUrl ? (
-            <img
-              src={photo.googleDriveUrl}
-              alt={photo.originalFileName}
-              className="w-full h-auto max-h-[90vh] object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-white">
-              이미지를 불러올 수 없습니다: {photo.originalFileName}
-            </div>
-          )}
+          {(() => {
+            // Google Drive URL 우선 사용
+            const imageUrl = photo.googleDriveUrl || 
+              (photo.filePath?.startsWith('http') ? photo.filePath : null);
+            
+            if (imageUrl) {
+              return (
+                <img
+                  src={imageUrl}
+                  alt={photo.originalFileName}
+                  className="w-full h-auto max-h-[90vh] object-contain"
+                  onClick={(e) => e.stopPropagation()}
+                  onError={(e) => {
+                    // 대체 URL 시도
+                    if (photo.filePath && photo.filePath.startsWith('http') && e.currentTarget.src !== photo.filePath) {
+                      e.currentTarget.src = photo.filePath;
+                    } else {
+                      e.currentTarget.style.display = 'none';
+                    }
+                  }}
+                />
+              );
+            }
+            return (
+              <div className="w-full h-full flex items-center justify-center text-white">
+                이미지를 불러올 수 없습니다: {photo.originalFileName}
+              </div>
+            );
+          })()}
           {photo.description && (
             <div className="mt-4 bg-white bg-opacity-90 rounded p-4">
               <p className="text-gray-900">{photo.description}</p>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { saveUploadedFile } from '@/lib/file-upload';
-import { uploadToGoogleDrive, uploadToGoogleDriveFromBuffer } from '@/lib/google-drive';
+import { uploadBufferToCloudinary } from '@/lib/cloudinary';
 import { z } from 'zod';
 import path from 'path';
 
@@ -77,63 +77,52 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // 로컬 저장 (Vercel 환경에서는 스킵)
-      const fileInfo = await saveUploadedFile(
-        file,
-        vehicle.vehicleNumber,
-        inspectionDate
-      );
-
-      // 구글 드라이브 업로드
-      const folderPath = vehicle.vehicleNumber;
+      // 파일 정보 준비
       const fileExtension = path.extname(file.name);
-      const driveFileName = files.length > 1 
+      const cloudinaryFileName = files.length > 1 
         ? `${baseFileName}_${i + 1}${fileExtension}`
         : `${baseFileName}${fileExtension}`;
-      
-      // Vercel 환경에서는 메모리에서 직접 업로드, 로컬 환경에서는 파일 경로 사용
+
+      // 파일을 Buffer로 변환
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const mimeType = file.type || 'image/jpeg';
+
+      // Cloudinary에 업로드
+      const cloudinaryResult = await uploadBufferToCloudinary(
+        buffer,
+        cloudinaryFileName,
+        vehicle.vehicleNumber,
+        mimeType
+      );
+
+      // 로컬 저장 (로컬 개발 환경에서만)
       const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
-      let googleDriveResult;
+      let localFilePath = '';
       
-      if (isVercel) {
-        // Vercel: 메모리 버퍼에서 직접 업로드
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        googleDriveResult = await uploadToGoogleDriveFromBuffer(
-          buffer,
-          driveFileName,
-          folderPath,
-          fileInfo.mimeType
-        );
-      } else {
-        // 로컬: 파일 경로 사용
-        const localFilePath = path.join(
-          process.cwd(),
-          'uploads',
-          'vehicles',
+      if (!isVercel) {
+        const fileInfo = await saveUploadedFile(
+          file,
           vehicle.vehicleNumber,
-          inspectionDate.split('T')[0],
-          fileInfo.fileName
+          inspectionDate
         );
-        googleDriveResult = await uploadToGoogleDrive(
-          localFilePath,
-          driveFileName,
-          folderPath,
-          fileInfo.mimeType
-        );
+        localFilePath = fileInfo.filePath;
       }
 
       // 데이터베이스에 저장
+      // Cloudinary URL을 우선 사용, 없으면 로컬 경로 사용
+      const finalFilePath = cloudinaryResult?.url || localFilePath;
+      
       const photo = await prisma.inspectionPhoto.create({
         data: {
           inspectionAreaId,
-          fileName: fileInfo.fileName,
+          fileName: cloudinaryFileName,
           originalFileName: file.name,
-          filePath: fileInfo.filePath,
-          googleDriveFileId: googleDriveResult?.fileId || null,
-          googleDriveUrl: googleDriveResult?.webViewLink || null,
-          fileSize: fileInfo.fileSize,
-          mimeType: fileInfo.mimeType,
+          filePath: finalFilePath,
+          googleDriveFileId: cloudinaryResult?.publicId || null, // publicId를 여기에 저장 (나중에 삭제용)
+          googleDriveUrl: cloudinaryResult?.url || null, // Cloudinary URL을 여기에 저장
+          fileSize: buffer.length,
+          mimeType: mimeType,
           description: description || null,
         },
       });

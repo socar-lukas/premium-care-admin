@@ -237,30 +237,34 @@ export default function VehicleDetailPage({
                                       key={photo.id}
                                       className="w-16 h-16 relative rounded overflow-hidden bg-gray-100"
                                     >
-                                      {photo.filePath ? (
-                                        <img
-                                          src={photo.filePath.startsWith('http') ? photo.filePath : photo.filePath}
-                                          alt={photo.originalFileName}
-                                          className="w-full h-full object-cover"
-                                          onError={(e) => {
-                                            if (photo.googleDriveUrl && e.currentTarget.src !== photo.googleDriveUrl) {
-                                              e.currentTarget.src = photo.googleDriveUrl;
-                                            } else {
-                                              e.currentTarget.style.display = 'none';
-                                            }
-                                          }}
-                                        />
-                                      ) : photo.googleDriveUrl ? (
-                                        <img
-                                          src={photo.googleDriveUrl}
-                                          alt={photo.originalFileName}
-                                          className="w-full h-full object-cover"
-                                        />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs p-1">
-                                          {photo.originalFileName}
-                                        </div>
-                                      )}
+                                      {(() => {
+                                        // Google Drive URL 우선 사용
+                                        const imageUrl = photo.googleDriveUrl || 
+                                          (photo.filePath?.startsWith('http') ? photo.filePath : null);
+                                        
+                                        if (imageUrl) {
+                                          return (
+                                            <img
+                                              src={imageUrl}
+                                              alt={photo.originalFileName}
+                                              className="w-full h-full object-cover"
+                                              onError={(e) => {
+                                                // 대체 URL 시도
+                                                if (photo.filePath && photo.filePath.startsWith('http') && e.currentTarget.src !== photo.filePath) {
+                                                  e.currentTarget.src = photo.filePath;
+                                                } else {
+                                                  e.currentTarget.style.display = 'none';
+                                                }
+                                              }}
+                                            />
+                                          );
+                                        }
+                                        return (
+                                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs p-1">
+                                            {photo.originalFileName}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   ))}
                                   {area.photos.length > 3 && (
