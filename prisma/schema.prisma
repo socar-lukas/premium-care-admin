@@ -19,6 +19,8 @@ model Vehicle {
   year          Int?
   contact       String?
   vehicleType   String?
+  engine        String?       // 엔진 타입
+  fuel          String?       // 연료 타입
   memo          String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -34,10 +36,12 @@ model Inspection {
   vehicleId       String
   vehicle         Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   inspectionDate  DateTime
+  completedAt     DateTime?         // 점검 완료 시각
   inspectionType  String            // 세차전, 세차후, 정기점검, 수리 등
   overallStatus   String            // 우수, 양호, 보통, 불량
   inspector       String?
   memo            String?
+  details         Json?             // 세차점검 상세 데이터 (오염도, 타이어, 조치 등)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   areas           InspectionArea[]

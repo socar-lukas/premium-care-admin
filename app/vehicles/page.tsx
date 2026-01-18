@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import MobileNav from '@/components/MobileNav';
 import SocarLogo from '@/components/SocarLogo';
+import BulkUpload from '@/components/BulkUpload';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Vehicle {
   id: string;
@@ -14,16 +16,20 @@ interface Vehicle {
   manufacturer: string | null;
   year: number | null;
   contact: string | null;
+  engine: string | null;
+  fuel: string | null;
   inspections: Array<{ inspectionDate: Date }>;
 }
 
 export default function VehiclesPage() {
   const router = useRouter();
+  const { isAdmin } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
 
   useEffect(() => {
     fetchVehicles();
@@ -73,14 +79,19 @@ export default function VehiclesPage() {
     }
 
     try {
+      const adminPin = sessionStorage.getItem('adminPin');
       const res = await fetch(`/api/vehicles/${id}`, {
         method: 'DELETE',
+        headers: {
+          'x-admin-pin': adminPin || '',
+        },
       });
 
       if (res.ok) {
         fetchVehicles();
       } else {
-        alert('삭제에 실패했습니다.');
+        const error = await res.json();
+        alert(error.error || '삭제에 실패했습니다.');
       }
     } catch (error) {
       console.error('Error deleting vehicle:', error);
@@ -106,12 +117,23 @@ export default function VehiclesPage() {
               >
                 대시보드
               </Link>
-              <Link
-                href="/vehicles/new"
-                className="gradient-button-primary px-5 py-2 text-white rounded-lg text-sm font-semibold shadow-lg"
-              >
-                + 차량 등록
-              </Link>
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={() => setShowBulkUpload(true)}
+                    className="px-5 py-2 text-white rounded-lg text-sm font-semibold shadow-lg"
+                    style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}
+                  >
+                    차량 일괄 등록
+                  </button>
+                  <Link
+                    href="/vehicles/new"
+                    className="gradient-button-primary px-5 py-2 text-white rounded-lg text-sm font-semibold shadow-lg"
+                  >
+                    차량 수기 등록
+                  </Link>
+                </>
+              )}
             </div>
             <div className="md:hidden">
               <MobileNav />
@@ -165,7 +187,11 @@ export default function VehiclesPage() {
                           <h3 className="font-bold text-gray-900 text-base mb-1">
                             {vehicle.vehicleNumber}
                           </h3>
-                          <p className="text-sm text-gray-600 font-medium">{vehicle.ownerName}</p>
+                          <p className="text-sm text-gray-600 font-medium">
+                            {vehicle.manufacturer && vehicle.model
+                              ? `${vehicle.manufacturer}/${vehicle.model}`
+                              : vehicle.manufacturer || vehicle.model || '-'}
+                          </p>
                         </div>
                         <div className="flex gap-2">
                           <Link
@@ -174,35 +200,31 @@ export default function VehiclesPage() {
                           >
                             상세
                           </Link>
-                          <button
-                            onClick={() => handleDelete(vehicle.id, vehicle.vehicleNumber)}
-                            className="px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-lg font-semibold shadow-md"
-                          >
-                            삭제
-                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleDelete(vehicle.id, vehicle.vehicleNumber)}
+                              className="px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-lg font-semibold shadow-md"
+                            >
+                              삭제
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-1 bg-blue-50 rounded-md text-blue-700 text-xs font-medium">
-                            {vehicle.manufacturer} {vehicle.model}
-                          </span>
-                        </div>
                         <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                          {vehicle.year && (
-                            <span className="flex items-center gap-1">
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                              {vehicle.year}
+                          {vehicle.engine && (
+                            <span className="px-2 py-1 bg-blue-50 rounded-md text-blue-700 font-medium">
+                              {vehicle.engine}
                             </span>
                           )}
-                          {vehicle.contact && (
-                            <span className="flex items-center gap-1">
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                              </svg>
-                              {vehicle.contact}
+                          {vehicle.year && (
+                            <span className="px-2 py-1 bg-gray-100 rounded-md text-gray-600 font-medium">
+                              {vehicle.year}년
+                            </span>
+                          )}
+                          {vehicle.fuel && (
+                            <span className="px-2 py-1 bg-green-50 rounded-md text-green-700 font-medium">
+                              {vehicle.fuel}
                             </span>
                           )}
                         </div>
@@ -230,16 +252,16 @@ export default function VehiclesPage() {
                           차량번호
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          소유자
+                          제조사/모델명
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          모델
+                          엔진
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           연식
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          연락처
+                          연료
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           최근 점검일
@@ -256,16 +278,18 @@ export default function VehiclesPage() {
                             {vehicle.vehicleNumber}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {vehicle.ownerName}
+                            {vehicle.manufacturer && vehicle.model
+                              ? `${vehicle.manufacturer}/${vehicle.model}`
+                              : vehicle.manufacturer || vehicle.model || '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {vehicle.manufacturer} {vehicle.model}
+                            {vehicle.engine || '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {vehicle.year || '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {vehicle.contact || '-'}
+                            {vehicle.fuel || '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {vehicle.inspections[0]
@@ -281,12 +305,14 @@ export default function VehiclesPage() {
                             >
                               상세
                             </Link>
-                            <button
-                              onClick={() => handleDelete(vehicle.id, vehicle.vehicleNumber)}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              삭제
-                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDelete(vehicle.id, vehicle.vehicleNumber)}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                삭제
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -320,6 +346,14 @@ export default function VehiclesPage() {
           </div>
         </div>
       </main>
+
+      {/* 일괄 등록 모달 */}
+      {showBulkUpload && (
+        <BulkUpload
+          onComplete={() => fetchVehicles()}
+          onClose={() => setShowBulkUpload(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import MobileNav from '@/components/MobileNav';
 import SocarLogo from '@/components/SocarLogo';
+import AdminLoginModal from '@/components/AdminLoginModal';
+import BulkUpload from '@/components/BulkUpload';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Vehicle {
   id: string;
@@ -17,54 +20,120 @@ interface Vehicle {
 
 export default function Home() {
   const router = useRouter();
+  const { isAdmin, logout } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [stats, setStats] = useState({
     totalVehicles: 0,
     recentInspections: 0,
   });
+  const observerTarget = useRef<HTMLDivElement>(null);
+  const lastFetchTime = useRef<number>(0);
+  const isFetching = useRef<boolean>(false);
 
-  useEffect(() => {
-    fetchVehicles();
+  // 데이터 새로고침 함수 (디바운스 적용)
+  const refreshData = useCallback((force = false) => {
+    const now = Date.now();
+    // 5초 이내에 이미 fetch 했거나 현재 fetching 중이면 스킵
+    if (!force && (isFetching.current || now - lastFetchTime.current < 5000)) {
+      return;
+    }
+    lastFetchTime.current = now;
+    setPage(1);
+    setVehicles([]);
+    setHasMore(true);
+    fetchVehicles(1, true);
     fetchStats();
-  }, [search]);
-
-  // 페이지 포커스 시 데이터 새로고침
-  useEffect(() => {
-    const handleFocus = () => {
-      fetchVehicles();
-      fetchStats();
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
-  // 페이지 로드 시 데이터 새로고침 (다른 페이지에서 돌아왔을 때)
+  // 초기 로드
+  useEffect(() => {
+    refreshData(true);
+  }, []);
+
+  // 검색어가 변경되면 페이지 리셋하고 새로 fetch
+  useEffect(() => {
+    if (search !== '') {
+      refreshData(true);
+    }
+  }, [search, refreshData]);
+
+  // 페이지가 변경되면 추가 데이터 fetch
+  useEffect(() => {
+    if (page > 1) {
+      fetchVehicles(page, false);
+    }
+  }, [page]);
+
+  // 페이지 visibility 변경 시 데이터 새로고침 (다른 페이지에서 돌아왔을 때)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        fetchVehicles();
-        fetchStats();
+        refreshData();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
+  }, [refreshData]);
 
-  const fetchVehicles = async () => {
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadingMore]);
+
+  const fetchVehicles = async (pageNum: number, isReset: boolean) => {
+    if (isFetching.current && isReset) return;
+
     try {
+      isFetching.current = true;
+      if (isReset) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+
       const params = new URLSearchParams();
       if (search) params.append('search', search);
-      params.append('limit', '10');
+      params.append('page', pageNum.toString());
+      params.append('limit', '15');
 
       const res = await fetch(`/api/vehicles?${params}`);
       const data = await res.json();
-      setVehicles(data.vehicles || []);
+      const newVehicles = data.vehicles || [];
+      const totalPages = data.pagination?.totalPages || 1;
+
+      if (isReset) {
+        setVehicles(newVehicles);
+      } else {
+        setVehicles((prev) => [...prev, ...newVehicles]);
+      }
+
+      setHasMore(pageNum < totalPages);
     } catch (error) {
       console.error('Error fetching vehicles:', error);
     } finally {
+      isFetching.current = false;
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -108,22 +177,59 @@ export default function Home() {
                 Socar Premium Admin
               </h1>
             </div>
-            <div className="hidden md:flex gap-3">
+            <div className="hidden md:flex gap-3 items-center">
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={() => setShowBulkUpload(true)}
+                    className="px-4 py-2 text-white rounded-lg text-sm font-semibold shadow-lg"
+                    style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}
+                  >
+                    차량 일괄 등록
+                  </button>
+                  <Link
+                    href="/vehicles/new"
+                    className="px-4 py-2 text-white rounded-lg text-sm font-semibold shadow-lg"
+                    style={{ background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)' }}
+                  >
+                    차량 수기 등록
+                  </Link>
+                </>
+              )}
               <Link
-                href="/vehicles"
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-[#0078FF] rounded-lg hover:bg-[#EBF5FF] transition-all duration-200"
-              >
-                차량 목록
-              </Link>
-              <Link
-                href="/vehicles/new"
+                href="/inspections/new"
                 className="gradient-button-primary px-5 py-2 text-white rounded-lg text-sm font-semibold shadow-lg"
               >
-                + 차량 등록
+                세차·점검 기록 등록
               </Link>
+              <Link
+                href="/maintenance/new"
+                className="px-4 py-2 text-white rounded-lg text-sm font-semibold shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}
+              >
+                소모품·경정비 기록 등록
+              </Link>
+              {isAdmin ? (
+                <button
+                  onClick={logout}
+                  className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 rounded-lg hover:bg-red-50 transition-all duration-200"
+                >
+                  로그아웃
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowLoginModal(true)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-[#0078FF] rounded-lg hover:bg-[#EBF5FF] transition-all duration-200 flex items-center gap-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  관리자
+                </button>
+              )}
             </div>
             <div className="md:hidden">
-              <MobileNav />
+              <MobileNav onBulkUpload={() => setShowBulkUpload(true)} />
             </div>
           </div>
         </div>
@@ -145,7 +251,7 @@ export default function Home() {
                 <h3 className="text-xs md:text-sm font-semibold text-gray-600">전체 차량</h3>
               </div>
               <p className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                {stats.totalVehicles}
+                {loading && stats.totalVehicles === 0 ? <span className="inline-block w-12 h-8 bg-gray-200 rounded animate-pulse"></span> : stats.totalVehicles}
               </p>
             </div>
           </div>
@@ -161,7 +267,7 @@ export default function Home() {
                 <h3 className="text-xs md:text-sm font-semibold text-gray-600">오늘 점검</h3>
               </div>
               <p className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, #3393FF 0%, #0078FF 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                {stats.recentInspections}
+                {loading && stats.recentInspections === 0 ? <span className="inline-block w-8 h-8 bg-gray-200 rounded animate-pulse"></span> : stats.recentInspections}
               </p>
             </div>
           </div>
@@ -178,7 +284,7 @@ export default function Home() {
               </div>
               <input
                 type="text"
-                placeholder="차량번호 또는 소유자명으로 검색..."
+                placeholder="차량 번호 또는 모델로 검색하기"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="modern-input w-full pl-12 pr-4 py-3 md:py-3 text-base md:text-sm rounded-xl"
@@ -188,18 +294,31 @@ export default function Home() {
 
           <div className="p-4 md:p-6">
             <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
-              최근 등록 차량
+              차량 목록 ({stats.totalVehicles}대)
             </h2>
             {loading ? (
-              <div className="text-center py-8 text-gray-500">로딩 중...</div>
+              <div className="space-y-3">
+                {/* 스켈레톤 로딩 */}
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="animate-pulse glass-card rounded-xl p-4 border border-white/30">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="h-5 bg-gray-200 rounded w-24 mb-2"></div>
+                        <div className="h-4 bg-gray-100 rounded w-32"></div>
+                      </div>
+                      <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : vehicles.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 등록된 차량이 없습니다.
               </div>
             ) : (
               <>
-                {/* 모바일: 카드 형태 */}
-                <div className="md:hidden space-y-3">
+                {/* 모바일: 카드 형태 - 스크롤 컨테이너 */}
+                <div className="md:hidden space-y-3 max-h-[60vh] overflow-y-auto pr-1">
                   {vehicles.map((vehicle, index) => (
                     <Link
                       key={vehicle.id}
@@ -213,7 +332,7 @@ export default function Home() {
                             {vehicle.vehicleNumber}
                           </h3>
                           <p className="text-sm text-gray-600 font-medium">
-                            {vehicle.ownerName}
+                            {vehicle.manufacturer} {vehicle.model}
                           </p>
                         </div>
                         <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
@@ -221,11 +340,6 @@ export default function Home() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
-                        <span className="px-2 py-1 bg-blue-50 rounded-md text-blue-700 font-medium">
-                          {vehicle.manufacturer} {vehicle.model}
-                        </span>
                       </div>
                       {vehicle.inspections[0] && (
                         <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
@@ -239,21 +353,35 @@ export default function Home() {
                       )}
                     </Link>
                   ))}
+
+                  {/* 무한 스크롤 트리거 (모바일) */}
+                  <div ref={observerTarget} className="h-4" />
+
+                  {/* 로딩 인디케이터 */}
+                  {loadingMore && (
+                    <div className="text-center py-4 text-gray-500">
+                      더 불러오는 중...
+                    </div>
+                  )}
+
+                  {/* 모든 데이터 로드 완료 */}
+                  {!hasMore && vehicles.length > 0 && (
+                    <div className="text-center py-4 text-gray-400 text-sm">
+                      모든 차량을 불러왔습니다
+                    </div>
+                  )}
                 </div>
 
-                {/* 데스크톱: 테이블 형태 */}
-                <div className="hidden md:block overflow-x-auto">
+                {/* 데스크톱: 테이블 형태 - 스크롤 컨테이너 */}
+                <div className="hidden md:block max-h-[60vh] overflow-y-auto">
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           차량번호
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          소유자
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          모델
+                          제조사/모델
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           최근 점검일
@@ -268,9 +396,6 @@ export default function Home() {
                         <tr key={vehicle.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {vehicle.vehicleNumber}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {vehicle.ownerName}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {vehicle.manufacturer} {vehicle.model}
@@ -294,12 +419,48 @@ export default function Home() {
                       ))}
                     </tbody>
                   </table>
+
+                  {/* 무한 스크롤 트리거 (데스크톱) */}
+                  <div ref={observerTarget} className="h-4" />
+
+                  {/* 로딩 인디케이터 */}
+                  {loadingMore && (
+                    <div className="text-center py-4 text-gray-500">
+                      더 불러오는 중...
+                    </div>
+                  )}
+
+                  {/* 모든 데이터 로드 완료 */}
+                  {!hasMore && vehicles.length > 0 && (
+                    <div className="text-center py-4 text-gray-400 text-sm">
+                      모든 차량을 불러왔습니다
+                    </div>
+                  )}
                 </div>
               </>
             )}
           </div>
         </div>
       </main>
+
+      <AdminLoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+      />
+
+      {/* 일괄 등록 모달 */}
+      {showBulkUpload && (
+        <BulkUpload
+          onComplete={() => {
+            setPage(1);
+            setVehicles([]);
+            setHasMore(true);
+            fetchVehicles(1, true);
+            fetchStats();
+          }}
+          onClose={() => setShowBulkUpload(false)}
+        />
+      )}
     </div>
   );
 }

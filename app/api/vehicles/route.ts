@@ -2,14 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
+function verifyAdminPin(request: NextRequest): boolean {
+  const pin = request.headers.get('x-admin-pin');
+  return pin === process.env.ADMIN_PIN;
+}
+
 const vehicleSchema = z.object({
   vehicleNumber: z.string().min(1),
   ownerName: z.string().min(1),
   model: z.string().optional(),
   manufacturer: z.string().optional(),
-  year: z.number().int().optional(),
-  contact: z.string().optional(),
   vehicleType: z.string().optional(),
+  engine: z.string().optional(),
+  year: z.number().int().optional(),
+  fuel: z.string().optional(),
+  contact: z.string().optional(),
   memo: z.string().optional(),
 });
 
@@ -37,7 +44,12 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit,
         orderBy: { updatedAt: 'desc' },
-        include: {
+        select: {
+          id: true,
+          vehicleNumber: true,
+          ownerName: true,
+          model: true,
+          manufacturer: true,
           inspections: {
             take: 1,
             orderBy: { inspectionDate: 'desc' },
@@ -50,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`[GET /api/vehicles] Found ${vehicles.length} vehicles, total: ${total}`);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       vehicles,
       pagination: {
         page,
@@ -59,6 +71,11 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
+
+    // 캐시 헤더 추가 (10초 캐시, 백그라운드 리프레시)
+    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30');
+
+    return response;
   } catch (error) {
     console.error('Error fetching vehicles:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -76,8 +93,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/vehicles - 차량 등록
+// POST /api/vehicles - 차량 등록 (관리자 전용)
 export async function POST(request: NextRequest) {
+  if (!verifyAdminPin(request)) {
+    return NextResponse.json(
+      { error: '관리자 권한이 필요합니다.' },
+      { status: 403 }
+    );
+  }
+
   try {
     const body = await request.json();
     const data = vehicleSchema.parse(body);

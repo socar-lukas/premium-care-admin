@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+function verifyAdminPin(request: NextRequest): boolean {
+  const pin = request.headers.get('x-admin-pin');
+  return pin === process.env.ADMIN_PIN;
+}
+
 // GET /api/inspections/[id] - 점검 기록 상세
 export async function GET(
   request: NextRequest,
@@ -38,11 +43,18 @@ export async function GET(
   }
 }
 
-// DELETE /api/inspections/[id] - 점검 기록 삭제
+// DELETE /api/inspections/[id] - 점검 기록 삭제 (관리자 전용)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!verifyAdminPin(request)) {
+    return NextResponse.json(
+      { error: '관리자 권한이 필요합니다.' },
+      { status: 403 }
+    );
+  }
+
   try {
     await prisma.inspection.delete({
       where: { id: params.id },

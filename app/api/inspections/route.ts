@@ -5,10 +5,12 @@ import { z } from 'zod';
 const inspectionSchema = z.object({
   vehicleId: z.string().uuid(),
   inspectionDate: z.string().datetime(),
+  completedAt: z.string().datetime().optional(),
   inspectionType: z.string(),
   overallStatus: z.string(),
   inspector: z.string().optional(),
   memo: z.string().optional(),
+  details: z.any().optional(), // JSON 데이터 (세차점검 상세)
   areas: z.array(
     z.object({
       areaCategory: z.string(),
@@ -40,13 +42,29 @@ export async function GET(request: NextRequest) {
       if (endDate) where.inspectionDate.lte = new Date(endDate);
     }
 
+    // 통계용 간단 쿼리인지 확인 (startDate/endDate만 있고 limit 작은 경우)
+    const isStatsQuery = startDate && endDate && limit <= 20;
+
     const [inspections, total] = await Promise.all([
       prisma.inspection.findMany({
         where,
         skip,
         take: limit,
         orderBy: { inspectionDate: 'desc' },
-        include: {
+        select: isStatsQuery ? {
+          id: true,
+          inspectionDate: true,
+          inspectionType: true,
+        } : {
+          id: true,
+          vehicleId: true,
+          inspectionDate: true,
+          completedAt: true,
+          inspectionType: true,
+          overallStatus: true,
+          inspector: true,
+          memo: true,
+          details: true,
           vehicle: {
             select: {
               id: true,
@@ -55,9 +73,19 @@ export async function GET(request: NextRequest) {
             },
           },
           areas: {
-            include: {
+            select: {
+              id: true,
+              areaCategory: true,
+              areaName: true,
+              status: true,
               photos: {
                 take: 1,
+                select: {
+                  id: true,
+                  googleDriveUrl: true,
+                  filePath: true,
+                  originalFileName: true,
+                },
               },
             },
           },
@@ -66,7 +94,7 @@ export async function GET(request: NextRequest) {
       prisma.inspection.count({ where }),
     ]);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       inspections,
       pagination: {
         page,
@@ -75,6 +103,11 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
+
+    // 캐시 헤더 추가 (10초 캐시)
+    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30');
+
+    return response;
   } catch (error) {
     console.error('Error fetching inspections:', error);
     return NextResponse.json(
@@ -106,10 +139,12 @@ export async function POST(request: NextRequest) {
       data: {
         vehicleId: data.vehicleId,
         inspectionDate: new Date(data.inspectionDate),
+        completedAt: data.completedAt ? new Date(data.completedAt) : null,
         inspectionType: data.inspectionType,
         overallStatus: data.overallStatus,
         inspector: data.inspector,
         memo: data.memo,
+        details: data.details || null,
         areas: data.areas
           ? {
               create: data.areas.map((area) => ({

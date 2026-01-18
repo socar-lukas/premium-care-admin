@@ -1,23 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SocarLogo from '@/components/SocarLogo';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function NewVehiclePage() {
   const router = useRouter();
+  const { isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     vehicleNumber: '',
     ownerName: '',
     model: '',
     manufacturer: '',
-    year: '',
-    contact: '',
     vehicleType: '',
+    engine: '',
+    year: '',
+    fuel: '',
     memo: '',
   });
+
+  useEffect(() => {
+    if (!isAdmin) {
+      router.push('/');
+    }
+  }, [isAdmin, router]);
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%)' }}>
+        <div className="text-gray-500">접근 권한이 없습니다. 리다이렉트 중...</div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,12 +43,17 @@ export default function NewVehiclePage() {
     try {
       const payload = {
         ...formData,
+        ownerName: formData.model || formData.vehicleNumber, // 모델명 또는 차량번호로 설정
         year: formData.year ? parseInt(formData.year) : undefined,
       };
 
+      const adminPin = sessionStorage.getItem('adminPin');
       const res = await fetch('/api/vehicles', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-pin': adminPin || '',
+        },
         body: JSON.stringify(payload),
       });
 
@@ -102,21 +124,23 @@ export default function NewVehiclePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, vehicleNumber: e.target.value })
                   }
+                  placeholder="예: 123가4567"
                   className="modern-input w-full px-4 py-3 md:py-3 text-base md:text-sm rounded-xl"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  소유자명 <span className="text-red-500">*</span>
+                  모델명 <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  value={formData.ownerName}
+                  value={formData.model}
                   onChange={(e) =>
-                    setFormData({ ...formData, ownerName: e.target.value })
+                    setFormData({ ...formData, model: e.target.value })
                   }
+                  placeholder="예: 아반떼"
                   className="modern-input w-full px-4 py-3 md:py-3 text-base md:text-sm rounded-xl"
                 />
               </div>
@@ -131,20 +155,37 @@ export default function NewVehiclePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, manufacturer: e.target.value })
                   }
+                  placeholder="예: 현대"
                   className="modern-input w-full px-4 py-3 md:py-3 text-base md:text-sm rounded-xl"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  모델
+                  차량 유형
                 </label>
                 <input
                   type="text"
-                  value={formData.model}
+                  value={formData.vehicleType}
                   onChange={(e) =>
-                    setFormData({ ...formData, model: e.target.value })
+                    setFormData({ ...formData, vehicleType: e.target.value })
                   }
+                  placeholder="예: 세단, SUV, 해치백"
+                  className="modern-input w-full px-4 py-3 md:py-3 text-base md:text-sm rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  엔진
+                </label>
+                <input
+                  type="text"
+                  value={formData.engine}
+                  onChange={(e) =>
+                    setFormData({ ...formData, engine: e.target.value })
+                  }
+                  placeholder="예: 1.6 가솔린"
                   className="modern-input w-full px-4 py-3 md:py-3 text-base md:text-sm rounded-xl"
                 />
               </div>
@@ -159,42 +200,24 @@ export default function NewVehiclePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, year: e.target.value })
                   }
+                  placeholder="예: 2023"
                   className="modern-input w-full px-4 py-3 md:py-3 text-base md:text-sm rounded-xl"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  연락처
+                  연료
                 </label>
                 <input
                   type="text"
-                  value={formData.contact}
+                  value={formData.fuel}
                   onChange={(e) =>
-                    setFormData({ ...formData, contact: e.target.value })
+                    setFormData({ ...formData, fuel: e.target.value })
                   }
+                  placeholder="예: 가솔린, 디젤, 전기"
                   className="modern-input w-full px-4 py-3 md:py-3 text-base md:text-sm rounded-xl"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  차량 유형
-                </label>
-                <select
-                  value={formData.vehicleType}
-                  onChange={(e) =>
-                    setFormData({ ...formData, vehicleType: e.target.value })
-                  }
-                  className="modern-input w-full px-4 py-3 md:py-3 text-base md:text-sm rounded-xl"
-                >
-                  <option value="">선택하세요</option>
-                  <option value="승용차">승용차</option>
-                  <option value="SUV">SUV</option>
-                  <option value="트럭">트럭</option>
-                  <option value="버스">버스</option>
-                  <option value="기타">기타</option>
-                </select>
               </div>
             </div>
 

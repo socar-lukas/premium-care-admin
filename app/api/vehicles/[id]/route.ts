@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
+function verifyAdminPin(request: NextRequest): boolean {
+  const pin = request.headers.get('x-admin-pin');
+  return pin === process.env.ADMIN_PIN;
+}
+
 const vehicleUpdateSchema = z.object({
   ownerName: z.string().min(1).optional(),
   model: z.string().optional(),
@@ -81,11 +86,18 @@ export async function PUT(
   }
 }
 
-// DELETE /api/vehicles/[id] - 차량 삭제
+// DELETE /api/vehicles/[id] - 차량 삭제 (관리자 전용)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!verifyAdminPin(request)) {
+    return NextResponse.json(
+      { error: '관리자 권한이 필요합니다.' },
+      { status: 403 }
+    );
+  }
+
   try {
     await prisma.vehicle.delete({
       where: { id: params.id },

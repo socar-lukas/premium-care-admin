@@ -11,9 +11,9 @@ let databaseUrl = process.env.DATABASE_URL || 'file:./dev.db';
 if (databaseUrl.startsWith('postgres://') || databaseUrl.startsWith('postgresql://')) {
   // 이미 pgbouncer 파라미터가 없으면 추가
   if (!databaseUrl.includes('pgbouncer=true') && !databaseUrl.includes('?')) {
-    databaseUrl = `${databaseUrl}?pgbouncer=true&connect_timeout=10`;
+    databaseUrl = `${databaseUrl}?pgbouncer=true&connect_timeout=15&pool_timeout=15&connection_limit=5`;
   } else if (!databaseUrl.includes('pgbouncer=true')) {
-    databaseUrl = `${databaseUrl}&pgbouncer=true&connect_timeout=10`;
+    databaseUrl = `${databaseUrl}&pgbouncer=true&connect_timeout=15&pool_timeout=15&connection_limit=5`;
   }
 }
 

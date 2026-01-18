@@ -1,9 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SocarLogo from '@/components/SocarLogo';
+
+interface InspectionDetails {
+  contamination?: string;
+  exteriorDamage?: string;
+  tires?: {
+    frontLeft: string;
+    frontRight: string;
+    rearLeft: string;
+    rearRight: string;
+  };
+  interiorContamination?: string[];
+  carWash?: string;
+  battery?: string;
+  wiperWasher?: string[];
+  warningLights?: string[];
+}
 
 interface InspectionPhoto {
   id: string;
@@ -12,7 +27,6 @@ interface InspectionPhoto {
   filePath: string;
   googleDriveUrl: string | null;
   description: string | null;
-  uploadedAt: string;
 }
 
 interface InspectionArea {
@@ -27,16 +41,20 @@ interface InspectionArea {
 interface Inspection {
   id: string;
   inspectionDate: string;
+  completedAt: string | null;
   inspectionType: string;
   overallStatus: string;
   inspector: string | null;
   memo: string | null;
+  details: InspectionDetails | null;
+  areas: InspectionArea[];
   vehicle: {
     id: string;
     vehicleNumber: string;
     ownerName: string;
+    manufacturer: string | null;
+    model: string | null;
   };
-  areas: InspectionArea[];
 }
 
 export default function InspectionDetailPage({
@@ -44,11 +62,8 @@ export default function InspectionDetailPage({
 }: {
   params: { id: string };
 }) {
-  const router = useRouter();
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedArea, setSelectedArea] = useState<string | null>(null);
-  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<InspectionPhoto | null>(null);
 
   useEffect(() => {
@@ -71,7 +86,7 @@ export default function InspectionDetailPage({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%)' }}>
         <div className="text-gray-500">로딩 중...</div>
       </div>
     );
@@ -79,442 +94,358 @@ export default function InspectionDetailPage({
 
   if (!inspection) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%)' }}>
         <div className="text-gray-500">점검 기록을 찾을 수 없습니다.</div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <Link
-              href={`/vehicles/${inspection.vehicle.id}`}
-              className="flex items-center gap-3"
-            >
-              <SocarLogo />
-              <span className="text-base md:text-lg font-bold text-gray-900">
-                Socar Premium Admin
-              </span>
-            </Link>
-            <div className="flex gap-4">
-              <Link
-                href={`/vehicles/${inspection.vehicle.id}`}
-                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-              >
-                차량 상세로
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+  const details = inspection.details;
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 점검 정보 */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                {inspection.vehicle.vehicleNumber} - {inspection.vehicle.ownerName}
-              </h1>
-              <p className="text-gray-500">
-                {new Date(inspection.inspectionDate).toLocaleString('ko-KR')}
-              </p>
-            </div>
-            <span
-              className={`px-4 py-2 rounded text-sm font-medium ${
-                inspection.overallStatus === '우수'
-                  ? 'bg-green-100 text-green-800'
-                  : inspection.overallStatus === '양호'
-                  ? 'text-[#005AFF]'
-                  : inspection.overallStatus === '보통'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-red-100 text-red-800'
-              }`}
-              style={inspection.overallStatus === '양호' ? { backgroundColor: '#EBF5FF' } : undefined}
-            >
-              {inspection.overallStatus}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div>
-              <span className="text-sm text-gray-500">점검 유형</span>
-              <p className="font-medium">{inspection.inspectionType}</p>
-            </div>
-            {inspection.inspector && (
-              <div>
-                <span className="text-sm text-gray-500">담당자</span>
-                <p className="font-medium">{inspection.inspector}</p>
-              </div>
-            )}
-          </div>
-
-          {inspection.memo && (
-            <div className="mt-4 p-4 bg-gray-50 rounded">
-              <span className="text-sm text-gray-500">메모</span>
-              <p className="mt-1">{inspection.memo}</p>
-            </div>
-          )}
-        </div>
-
-        {/* 점검 부위 */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b">
-            <h2 className="text-xl font-bold text-gray-900">점검 부위</h2>
-          </div>
-          <div className="p-6">
-            {inspection.areas.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                등록된 점검 부위가 없습니다.
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {inspection.areas.map((area) => (
-                  <div
-                    key={area.id}
-                    className="border border-gray-200 rounded-lg p-4"
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold">{area.areaName}</h3>
-                        <p className="text-sm text-gray-500">{area.areaCategory}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <span
-                          className={`px-3 py-1 rounded text-sm ${
-                            area.status === '우수'
-                              ? 'bg-green-100 text-green-800'
-                              : area.status === '양호'
-                              ? 'text-[#005AFF]'
-                              : area.status === '보통'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
-                          style={area.status === '양호' ? { backgroundColor: '#EBF5FF' } : undefined}
-                        >
-                          {area.status}
-                        </span>
-                        <button
-                          onClick={() => {
-                            setSelectedArea(area.id);
-                            setShowPhotoUpload(true);
-                          }}
-                          className="px-3 py-1 text-white rounded text-sm transition-all duration-200" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }} onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, #005AFF 0%, #0041E6 100%)'} onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)'}
-                        >
-                          사진 추가
-                        </button>
-                      </div>
-                    </div>
-
-                    {area.memo && (
-                      <p className="text-sm text-gray-600 mb-4">{area.memo}</p>
-                    )}
-
-                    {area.photos && area.photos.length > 0 && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {area.photos.map((photo) => (
-                          <div
-                            key={photo.id}
-                            className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer group"
-                            onClick={() => setSelectedPhoto(photo)}
-                          >
-                            {(() => {
-                              // Vercel 환경에서는 Google Drive URL 우선 사용
-                              const imageUrl = photo.googleDriveUrl || 
-                                (photo.filePath?.startsWith('http') ? photo.filePath : null) ||
-                                (photo.filePath && !photo.filePath.startsWith('/uploads') ? photo.filePath : null);
-                              
-                              if (imageUrl) {
-                                return (
-                                  <img
-                                    src={imageUrl}
-                                    alt={photo.originalFileName}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      // Google Drive URL이 있으면 시도
-                                      if (photo.googleDriveUrl && e.currentTarget.src !== photo.googleDriveUrl) {
-                                        e.currentTarget.src = photo.googleDriveUrl;
-                                      } else if (photo.filePath && photo.filePath.startsWith('http') && e.currentTarget.src !== photo.filePath) {
-                                        e.currentTarget.src = photo.filePath;
-                                      } else {
-                                        e.currentTarget.style.display = 'none';
-                                      }
-                                    }}
-                                  />
-                                );
-                              }
-                              return (
-                                <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                                  {photo.originalFileName}
-                                </div>
-                              );
-                            })()}
-                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity flex items-center justify-center">
-                              <span className="text-white text-sm opacity-0 group-hover:opacity-100">
-                                클릭하여 확대
-                              </span>
-                            </div>
-                            {photo.description && (
-                              <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-2">
-                                {photo.description}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
-
-      {showPhotoUpload && selectedArea && (
-        <PhotoUploadModal
-          inspectionAreaId={selectedArea}
-          onClose={() => {
-            setShowPhotoUpload(false);
-            setSelectedArea(null);
-            fetchInspection();
-          }}
-        />
-      )}
-
-      {selectedPhoto && (
-        <PhotoViewerModal
-          photo={selectedPhoto}
-          onClose={() => setSelectedPhoto(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-function PhotoUploadModal({
-  inspectionAreaId,
-  onClose,
-}: {
-  inspectionAreaId: string;
-  onClose: () => void;
-}) {
-  const [files, setFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
-  const [description, setDescription] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
-    setFiles([...files, ...selectedFiles]);
-
-    selectedFiles.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviews((prev) => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const removeFile = (index: number) => {
-    setFiles(files.filter((_, i) => i !== index));
-    setPreviews(previews.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (files.length === 0) return;
-
-    setUploading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append('inspectionAreaId', inspectionAreaId);
-      if (description) formData.append('description', description);
-      files.forEach((file) => {
-        formData.append('files', file);
-      });
-
-      const res = await fetch('/api/photos/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (res.ok) {
-        onClose();
-      } else {
-        const error = await res.json();
-        alert(error.error || '업로드에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('Error uploading photos:', error);
-      alert('업로드에 실패했습니다.');
-    } finally {
-      setUploading(false);
+  // 상태 색상 함수
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case '상':
+      case '파손':
+      case '방전':
+        return 'bg-red-100 text-red-700';
+      case '중':
+      case '경미':
+      case '전압낮음':
+        return 'bg-yellow-100 text-yellow-700';
+      case '하':
+      case '이상없음':
+      case '정상':
+        return 'bg-green-100 text-green-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end md:items-center justify-center z-50 p-0 md:p-4">
-      <div className="bg-white rounded-t-2xl md:rounded-lg shadow-xl max-w-2xl w-full h-[95vh] md:h-auto md:max-h-[90vh] overflow-y-auto">
-        <div className="p-4 md:p-6 border-b sticky top-0 bg-white z-10">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900">사진 업로드</h2>
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
-              aria-label="닫기"
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%)' }}>
+      <nav className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-white/20 sticky top-0 z-10">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="flex justify-between h-14 items-center">
+            <Link href="/" className="flex items-center gap-2">
+              <SocarLogo />
+              <span className="text-sm font-bold text-gray-900">Premium Admin</span>
+            </Link>
+            <Link
+              href={`/vehicles/${inspection.vehicle.id}`}
+              className="text-sm text-blue-600 font-medium"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+              차량 상세
+            </Link>
           </div>
         </div>
+      </nav>
 
-        <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4 md:space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              사진 선택 (다중 선택 가능)
-            </label>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileChange}
-              className="w-full px-4 py-3 md:py-2 text-base md:text-sm border border-gray-300 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold hover:file:bg-[#D6EBFF]"
-              style={{ '--file-bg': '#EBF5FF', '--file-text': '#0078FF' } as React.CSSProperties}
-            />
+      <main className="max-w-2xl mx-auto px-4 py-4 md:py-8">
+        <div className="bg-white rounded-2xl shadow-xl p-6 space-y-6">
+          {/* 헤더 */}
+          <div className="border-b border-gray-100 pb-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">세차·점검 기록</h1>
+                <p className="text-sm text-gray-500">{inspection.vehicle.vehicleNumber}</p>
+              </div>
+            </div>
+
+            {/* 시간 정보 */}
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-xs text-gray-500 mb-1">점검 시작</p>
+                <p className="font-medium text-gray-900">
+                  {new Date(inspection.inspectionDate).toLocaleString('ko-KR', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-xs text-gray-500 mb-1">점검 완료</p>
+                <p className="font-medium text-gray-900">
+                  {inspection.completedAt
+                    ? new Date(inspection.completedAt).toLocaleString('ko-KR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : '-'}
+                </p>
+              </div>
+            </div>
+
+            {/* 담당자 */}
+            {inspection.inspector && (
+              <div className="mt-3 flex items-center gap-2 text-sm">
+                <span className="text-gray-500">담당자:</span>
+                <span className="font-medium text-gray-900">{inspection.inspector}</span>
+              </div>
+            )}
           </div>
 
-          {previews.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                미리보기 ({previews.length}개)
-              </label>
-              <div className="grid grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
-                {previews.map((preview, index) => (
-                  <div key={index} className="relative aspect-square">
-                    <img
-                      src={preview}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeFile(index)}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 md:w-6 md:h-6 flex items-center justify-center text-sm md:text-xs shadow-lg"
-                      aria-label="삭제"
-                    >
-                      ✕
-                    </button>
+          {details ? (
+            <>
+              {/* 차량 상태 점검 */}
+              <div className="space-y-4">
+                <h3 className="text-base font-semibold text-gray-800 border-b border-gray-200 pb-2">차량 상태 점검</h3>
+
+                {/* 반납차량 오염도 */}
+                {details.contamination && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">반납차량 오염도</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(details.contamination)}`}>
+                      {details.contamination === '상' ? '상 (심함)' : details.contamination === '중' ? '중 (보통)' : '하 (깨끗)'}
+                    </span>
                   </div>
-                ))}
+                )}
+
+                {/* 외관이상 유형 */}
+                {details.exteriorDamage && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">외관이상 유형</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(details.exteriorDamage.includes('파손') ? '파손' : details.exteriorDamage.includes('경미') ? '경미' : '이상없음')}`}>
+                      {details.exteriorDamage}
+                    </span>
+                  </div>
+                )}
+
+                {/* 타이어 상태 */}
+                {details.tires && (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">타이어 상태</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { key: 'frontLeft', label: '앞바퀴 (좌)' },
+                        { key: 'frontRight', label: '앞바퀴 (우)' },
+                        { key: 'rearLeft', label: '뒷바퀴 (좌)' },
+                        { key: 'rearRight', label: '뒷바퀴 (우)' },
+                      ].map((tire) => (
+                        <div key={tire.key} className="bg-gray-50 rounded-lg p-2 flex justify-between items-center">
+                          <span className="text-xs text-gray-500">{tire.label}</span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(details.tires![tire.key as keyof typeof details.tires])}`}>
+                            {details.tires![tire.key as keyof typeof details.tires]}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 내부 오염 위치 */}
+                {details.interiorContamination && details.interiorContamination.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">내부 오염 위치</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {details.interiorContamination.map((location) => (
+                        <span key={location} className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium">
+                          {location}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* 조치 사항 */}
+              <div className="space-y-4">
+                <h3 className="text-base font-semibold text-gray-800 border-b border-gray-200 pb-2">조치 사항</h3>
+
+                {/* 세차 */}
+                {details.carWash && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">세차</span>
+                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                      {details.carWash}
+                    </span>
+                  </div>
+                )}
+
+                {/* 배터리 상태 */}
+                {details.battery && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">배터리 상태</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(details.battery)}`}>
+                      {details.battery}
+                    </span>
+                  </div>
+                )}
+
+                {/* 와이퍼/워셔액 */}
+                {details.wiperWasher && details.wiperWasher.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">와이퍼/워셔액</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {details.wiperWasher.map((item) => (
+                        <span key={item} className={`px-2.5 py-1 rounded-lg text-xs font-medium ${item === '정상' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 경고등 */}
+                {details.warningLights && details.warningLights.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">경고등</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {details.warningLights.map((item) => (
+                        <span key={item} className={`px-2.5 py-1 rounded-lg text-xs font-medium ${item === '없음' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              상세 점검 데이터가 없습니다.
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              설명 (선택사항)
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md"
-              placeholder="사진에 대한 설명을 입력하세요"
-            />
-          </div>
+          {/* 특이사항 */}
+          {inspection.memo && (
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold text-gray-800 border-b border-gray-200 pb-2">특이사항</h3>
+              <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">{inspection.memo}</p>
+            </div>
+          )}
 
-          <div className="flex flex-col-reverse sm:flex-row gap-3 md:gap-4 justify-end pt-4 border-t sticky bottom-0 bg-white">
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full sm:w-auto px-6 py-3 md:py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              disabled={uploading || files.length === 0}
-              className="w-full sm:w-auto px-6 py-3 md:py-2 text-white rounded-lg disabled:opacity-50 font-medium text-base md:text-sm transition-all duration-200" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }} onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.background = 'linear-gradient(135deg, #005AFF 0%, #0041E6 100%)')} onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)'}
-            >
-              {uploading ? '업로드 중...' : `${files.length}개 사진 업로드`}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
+          {/* 첨부 사진 */}
+          {inspection.areas && inspection.areas.length > 0 && (() => {
+            const allPhotos = inspection.areas.flatMap(area => area.photos || []);
+            if (allPhotos.length === 0) return null;
 
-function PhotoViewerModal({
-  photo,
-  onClose,
-}: {
-  photo: InspectionPhoto;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <div className="max-w-5xl w-full">
-        <div className="relative">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-full w-10 h-10 flex items-center justify-center z-10"
-          >
-            ✕
-          </button>
-          {(() => {
-            // Google Drive URL 우선 사용
-            const imageUrl = photo.googleDriveUrl || 
-              (photo.filePath?.startsWith('http') ? photo.filePath : null);
-            
-            if (imageUrl) {
+            // 사진을 점검 전/후로 분류
+            const beforePhotos = allPhotos.filter(p => p.description?.startsWith('before_'));
+            const afterPhotos = allPhotos.filter(p => p.description?.startsWith('after_'));
+            const otherPhotos = allPhotos.filter(p => !p.description?.startsWith('before_') && !p.description?.startsWith('after_'));
+
+            const getPhotoLabel = (description: string | null) => {
+              if (!description) return '';
+              const parts = description.replace('before_', '').replace('after_', '').split('_');
+              const type = parts[0];
+              const labels: Record<string, string> = {
+                front: '전면',
+                rear: '후면',
+                left: '좌측',
+                right: '우측',
+                interior: '실내',
+              };
+              return labels[type] || type;
+            };
+
+            const renderPhotoGrid = (photos: InspectionPhoto[], title: string) => {
+              if (photos.length === 0) return null;
               return (
-                <img
-                  src={imageUrl}
-                  alt={photo.originalFileName}
-                  className="w-full h-auto max-h-[90vh] object-contain"
-                  onClick={(e) => e.stopPropagation()}
-                  onError={(e) => {
-                    // 대체 URL 시도
-                    if (photo.filePath && photo.filePath.startsWith('http') && e.currentTarget.src !== photo.filePath) {
-                      e.currentTarget.src = photo.filePath;
-                    } else {
-                      e.currentTarget.style.display = 'none';
-                    }
-                  }}
-                />
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">{title} ({photos.length}장)</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {photos.map((photo) => {
+                      const imageUrl = photo.googleDriveUrl ||
+                        (photo.filePath?.startsWith('http') ? photo.filePath : null);
+                      return (
+                        <button
+                          key={photo.id}
+                          type="button"
+                          onClick={() => setSelectedPhoto(photo)}
+                          className="aspect-square rounded-lg overflow-hidden bg-gray-100 hover:opacity-80 transition-opacity relative group"
+                        >
+                          {imageUrl ? (
+                            <>
+                              <div className="absolute inset-0 bg-gray-200 animate-pulse group-has-[img[data-loaded]]:hidden"></div>
+                              <img
+                                src={imageUrl}
+                                alt={photo.originalFileName}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                                onLoad={(e) => e.currentTarget.setAttribute('data-loaded', 'true')}
+                              />
+                            </>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs p-1">
+                              {photo.originalFileName}
+                            </div>
+                          )}
+                          {photo.description && (
+                            <span className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs py-0.5 text-center">
+                              {getPhotoLabel(photo.description)}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               );
-            }
+            };
+
             return (
-              <div className="w-full h-full flex items-center justify-center text-white">
-                이미지를 불러올 수 없습니다: {photo.originalFileName}
+              <div className="space-y-4">
+                <h3 className="text-base font-semibold text-gray-800 border-b border-gray-200 pb-2">
+                  첨부 사진 ({allPhotos.length}장)
+                </h3>
+                {renderPhotoGrid(beforePhotos, '점검 전')}
+                {renderPhotoGrid(afterPhotos, '점검 후')}
+                {renderPhotoGrid(otherPhotos, '기타')}
               </div>
             );
           })()}
-          {photo.description && (
-            <div className="mt-4 bg-white bg-opacity-90 rounded p-4">
-              <p className="text-gray-900">{photo.description}</p>
-              <p className="text-sm text-gray-500 mt-2">
-                {new Date(photo.uploadedAt).toLocaleString('ko-KR')}
-              </p>
+
+          {/* 하단 버튼 */}
+          <div className="pt-4 border-t border-gray-100">
+            <Link
+              href={`/vehicles/${inspection.vehicle.id}`}
+              className="block w-full py-3 text-center bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 font-medium transition-all"
+            >
+              차량 정보로 돌아가기
+            </Link>
+          </div>
+        </div>
+      </main>
+
+      {/* 사진 확대 모달 */}
+      {selectedPhoto && (
+        <div
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedPhoto(null)}
+        >
+          <button
+            className="absolute top-4 right-4 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
+            onClick={() => setSelectedPhoto(null)}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img
+            src={selectedPhoto.googleDriveUrl || selectedPhoto.filePath}
+            alt={selectedPhoto.originalFileName}
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {selectedPhoto.description && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm">
+              {selectedPhoto.description.replace('before_', '점검 전 - ').replace('after_', '점검 후 - ').replace(/_\d+$/, '')}
             </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
-
-
