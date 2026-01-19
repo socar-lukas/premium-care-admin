@@ -491,7 +491,17 @@ function InspectionForm() {
 
             {/* 차량 상태 점검 섹션 */}
             <div className="space-y-4">
-              <h3 className="text-base font-semibold text-gray-800 border-b border-gray-200 pb-2">차량 상태 점검</h3>
+              <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                <h3 className="text-base font-semibold text-gray-800">차량 상태 점검</h3>
+                <a
+                  href="https://example.com/car-wash-guide"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  세차 가이드 📚
+                </a>
+              </div>
 
               {/* 반납차량 오염도 */}
               <div className="pl-1">
