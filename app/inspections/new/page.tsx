@@ -761,6 +761,21 @@ function InspectionForm() {
           </form>
         </div>
       </main>
+
+      {/* 플로팅 문열기 버튼 */}
+      {selectedVehicle && (
+        <a
+          href={`https://okstra.socarcorp.co.kr/car?s_id=&s_keyword_type=car_num&s_keyword=${encodeURIComponent(selectedVehicle.vehicleNumber)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-6 right-6 bg-green-500 text-white px-5 py-3 rounded-full shadow-lg hover:bg-green-600 active:scale-95 transition-all flex items-center gap-2 font-bold z-50"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+          </svg>
+          문열기
+        </a>
+      )}
     </div>
   );
 }
