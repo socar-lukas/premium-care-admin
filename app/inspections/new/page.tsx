@@ -245,6 +245,9 @@ function InspectionForm() {
           formData.append('inspectionAreaId', photoAreaId);
           formData.append('files', file);
           formData.append('description', photoType);
+          // 점검전/점검후 구분
+          const photoPhase = photoType.startsWith('before_') ? 'before' : 'after';
+          formData.append('photoPhase', photoPhase);
 
           try {
             await fetch('/api/photos/upload', {

@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const inspectionAreaId = formData.get('inspectionAreaId') as string;
     const description = formData.get('description') as string | null;
+    const photoPhase = formData.get('photoPhase') as 'before' | 'after' | null;
     const files = formData.getAll('files') as File[];
 
     if (!inspectionAreaId || files.length === 0) {
@@ -89,11 +90,14 @@ export async function POST(request: NextRequest) {
       const mimeType = file.type || 'image/jpeg';
 
       // Cloudinary에 업로드
+      const inspectionDateStr = inspectionDateObj.toISOString().split('T')[0];
       const cloudinaryResult = await uploadBufferToCloudinary(
         buffer,
         cloudinaryFileName,
         vehicle.vehicleNumber,
-        mimeType
+        mimeType,
+        inspectionDateStr,
+        photoPhase || undefined
       );
 
       // 로컬 저장 (로컬 개발 환경에서만)

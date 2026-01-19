@@ -15,13 +15,17 @@ if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && proce
  * @param fileName 파일명 (차량번호 - 소유자명, 날짜시간, 상태, 점검유형, 담당자 형식)
  * @param vehicleNumber 차량번호 (폴더 구조용)
  * @param mimeType MIME 타입
+ * @param inspectionDate 점검 날짜 (YYYY-MM-DD 형식)
+ * @param photoPhase 점검 단계 ('before' | 'after')
  * @returns 업로드된 이미지의 URL
  */
 export async function uploadBufferToCloudinary(
   buffer: Buffer,
   fileName: string,
   vehicleNumber: string,
-  mimeType: string
+  mimeType: string,
+  inspectionDate?: string,
+  photoPhase?: 'before' | 'after'
 ): Promise<{ url: string; publicId: string } | null> {
   if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
     console.warn('Cloudinary credentials not configured');
@@ -29,8 +33,12 @@ export async function uploadBufferToCloudinary(
   }
 
   try {
-    // 폴더 구조: PremiumCare/차량번호/
-    const folder = `PremiumCare/${vehicleNumber}`;
+    // 폴더 구조: PremiumCare/차량번호/날짜/점검전 or 점검후/
+    const dateFolder = inspectionDate || new Date().toISOString().split('T')[0];
+    const phaseFolder = photoPhase === 'before' ? '점검전' : photoPhase === 'after' ? '점검후' : '';
+    const folder = phaseFolder
+      ? `PremiumCare/${vehicleNumber}/${dateFolder}/${phaseFolder}`
+      : `PremiumCare/${vehicleNumber}/${dateFolder}`;
     
     // 파일명에서 확장자 제거하고 특수문자 정리
     const publicId = fileName
