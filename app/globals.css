@@ -211,4 +211,11 @@ video::-webkit-media-controls-enclosure {
   animation: fadeInUp 0.5s ease-out;
 }
 
+/* iOS Safe Area 지원 */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
 
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}

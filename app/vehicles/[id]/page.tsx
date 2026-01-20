@@ -153,58 +153,78 @@ export default function VehicleDetailPage({
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%)' }}>
       <nav className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <Link href="/" className="flex items-center gap-3">
+          <div className="flex justify-between h-14 md:h-16 items-center">
+            {/* 모바일: 뒤로가기 버튼 */}
+            <div className="flex items-center gap-2 md:hidden">
+              <Link href="/" className="p-2 -ml-2 text-gray-600 hover:text-gray-900">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </Link>
+              <span className="text-base font-bold text-gray-900">차량 정보</span>
+            </div>
+
+            {/* 데스크톱: 로고 및 타이틀 */}
+            <Link href="/" className="hidden md:flex items-center gap-3">
               <SocarLogo />
-              <span className="text-base md:text-lg font-bold text-gray-900">
+              <span className="text-lg font-bold text-gray-900">
                 Socar Premium Admin
               </span>
             </Link>
-            <div className="flex gap-2 md:gap-4">
+
+            {/* 데스크톱: 네비게이션 버튼 */}
+            <div className="hidden md:flex gap-4">
               <Link
                 href="/"
-                className="px-3 md:px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
               >
                 대시보드
               </Link>
               <Link
                 href={`/inspections/new?vehicleId=${vehicle.id}&vehicleNumber=${encodeURIComponent(vehicle.vehicleNumber)}&manufacturer=${encodeURIComponent(vehicle.manufacturer || '')}&model=${encodeURIComponent(vehicle.model || '')}`}
-                className="px-3 md:px-4 py-2 text-white rounded-md text-xs md:text-sm font-medium transition-all duration-200" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}
+                className="px-4 py-2 text-white rounded-md text-sm font-medium transition-all duration-200" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}
               >
                 세차·점검 기록 등록
               </Link>
               <Link
                 href={`/maintenance/new?vehicleId=${vehicle.id}&vehicleNumber=${encodeURIComponent(vehicle.vehicleNumber)}&manufacturer=${encodeURIComponent(vehicle.manufacturer || '')}&model=${encodeURIComponent(vehicle.model || '')}`}
-                className="px-3 md:px-4 py-2 text-white rounded-md text-xs md:text-sm font-medium transition-all duration-200" style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}
+                className="px-4 py-2 text-white rounded-md text-sm font-medium transition-all duration-200" style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}
               >
                 소모품·경정비 기록 등록
               </Link>
             </div>
+
+            {/* 모바일: 홈 버튼 */}
+            <Link href="/" className="md:hidden p-2 -mr-2 text-gray-600 hover:text-gray-900">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+            </Link>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 md:py-8">
         {/* 차량 문열기 바로가기 - 상단 고정 */}
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg p-4 mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 text-white">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg p-3 md:p-4 mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 md:gap-3 text-white">
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
               </svg>
             </div>
             <div>
-              <p className="font-bold text-lg">{vehicle.vehicleNumber}</p>
-              <p className="text-green-100 text-sm">차량 문열기</p>
+              <p className="font-bold text-base md:text-lg">{vehicle.vehicleNumber}</p>
+              <p className="text-green-100 text-xs md:text-sm">차량 문열기</p>
             </div>
           </div>
           <a
             href={`https://okstra.socarcorp.co.kr/car?s_id=&s_keyword_type=car_num&s_keyword=${encodeURIComponent(vehicle.vehicleNumber)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-white text-green-600 px-5 py-3 rounded-xl font-bold text-base shadow-md hover:bg-green-50 active:scale-95 transition-all flex items-center gap-2"
+            className="bg-white text-green-600 px-4 py-2.5 md:px-5 md:py-3 rounded-xl font-bold text-sm md:text-base shadow-md hover:bg-green-50 active:scale-95 transition-all flex items-center gap-1.5 md:gap-2 flex-shrink-0"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>
             문열기
@@ -648,8 +668,28 @@ export default function VehicleDetailPage({
             )}
           </div>
         </div>
+
+        {/* 모바일 하단 여백 (고정 버튼 공간 확보) */}
+        <div className="h-20 md:hidden"></div>
       </main>
 
+      {/* 모바일 하단 고정 액션 버튼 */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 flex gap-2 safe-area-bottom">
+        <Link
+          href={`/inspections/new?vehicleId=${vehicle.id}&vehicleNumber=${encodeURIComponent(vehicle.vehicleNumber)}&manufacturer=${encodeURIComponent(vehicle.manufacturer || '')}&model=${encodeURIComponent(vehicle.model || '')}`}
+          className="flex-1 py-3 text-white rounded-xl text-sm font-semibold text-center shadow-lg"
+          style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}
+        >
+          세차·점검 등록
+        </Link>
+        <Link
+          href={`/maintenance/new?vehicleId=${vehicle.id}&vehicleNumber=${encodeURIComponent(vehicle.vehicleNumber)}&manufacturer=${encodeURIComponent(vehicle.manufacturer || '')}&model=${encodeURIComponent(vehicle.model || '')}`}
+          className="flex-1 py-3 text-white rounded-xl text-sm font-semibold text-center shadow-lg"
+          style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}
+        >
+          소모품·경정비 등록
+        </Link>
       </div>
+    </div>
   );
 }
