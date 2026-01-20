@@ -65,7 +65,11 @@ export default function Home() {
     setVehicles([]);
     setHasMore(true);
 
-    // 예약 통계를 먼저 로드하고 점검필요 차량 목록 가져오기
+    // 차량 목록과 예약 통계를 병렬로 로드 (빠른 로딩)
+    fetchVehicles(1, true, []);
+    fetchStats();
+
+    // 예약 통계는 별도로 로드 (정렬은 클라이언트에서 처리)
     try {
       const res = await fetch('/api/reservations/stats');
       if (res.ok) {
@@ -81,20 +85,12 @@ export default function Home() {
           needsInspectionCarNums: priorityNums,
           vehicleStatusMap: data.vehicleStatusMap || {},
         });
-        setStatsLoaded(true);
-        // 예약 통계 로드 후 차량 목록 가져오기
-        fetchVehicles(1, true, priorityNums);
-      } else {
-        setStatsLoaded(true);
-        fetchVehicles(1, true, []);
       }
     } catch (error) {
       console.error('Error fetching reservation stats:', error);
+    } finally {
       setStatsLoaded(true);
-      fetchVehicles(1, true, []);
     }
-
-    fetchStats();
   }, []);
 
   // 초기 로드
@@ -504,7 +500,7 @@ export default function Home() {
                 </button>
               )}
             </div>
-            {(loading || loadingFiltered || !statsLoaded) ? (
+            {(loading || loadingFiltered) ? (
               <div className="space-y-3">
                 {/* 스켈레톤 로딩 */}
                 {[...Array(5)].map((_, i) => (
