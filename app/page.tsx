@@ -50,8 +50,11 @@ export default function Home() {
   const lastFetchTime = useRef<number>(0);
   const isFetching = useRef<boolean>(false);
 
+  // 점검필요 차량번호 목록을 ref로 관리 (최신 상태 유지)
+  const needsInspectionCarNumsRef = useRef<string[]>([]);
+
   // 데이터 새로고침 함수 (디바운스 적용)
-  const refreshData = useCallback((force = false) => {
+  const refreshData = useCallback(async (force = false) => {
     const now = Date.now();
     // 5초 이내에 이미 fetch 했거나 현재 fetching 중이면 스킵
     if (!force && (isFetching.current || now - lastFetchTime.current < 5000)) {
@@ -61,7 +64,36 @@ export default function Home() {
     setPage(1);
     setVehicles([]);
     setHasMore(true);
-    fetchVehicles(1, true);
+
+    // 예약 통계를 먼저 로드하고 점검필요 차량 목록 가져오기
+    try {
+      const res = await fetch('/api/reservations/stats');
+      if (res.ok) {
+        const data = await res.json();
+        const priorityNums = data.needsInspectionCarNums || [];
+        needsInspectionCarNumsRef.current = priorityNums;
+        setReservationStats({
+          inUseCount: data.inUseCount || 0,
+          upcomingReservationsCount: data.upcomingReservationsCount || 0,
+          needsInspectionCount: data.needsInspectionCount || 0,
+          inUseCarNums: data.inUseCarNums || [],
+          upcomingCarNums: data.upcomingCarNums || [],
+          needsInspectionCarNums: priorityNums,
+          vehicleStatusMap: data.vehicleStatusMap || {},
+        });
+        setStatsLoaded(true);
+        // 예약 통계 로드 후 차량 목록 가져오기
+        fetchVehicles(1, true, priorityNums);
+      } else {
+        setStatsLoaded(true);
+        fetchVehicles(1, true, []);
+      }
+    } catch (error) {
+      console.error('Error fetching reservation stats:', error);
+      setStatsLoaded(true);
+      fetchVehicles(1, true, []);
+    }
+
     fetchStats();
   }, []);
 
@@ -73,16 +105,19 @@ export default function Home() {
   // 검색어가 변경되면 페이지 리셋하고 새로 fetch
   useEffect(() => {
     if (search !== '') {
-      refreshData(true);
+      setPage(1);
+      setVehicles([]);
+      setHasMore(true);
+      fetchVehicles(1, true, []);  // 검색 시에는 우선순위 없이
     }
-  }, [search, refreshData]);
+  }, [search]);
 
   // 페이지가 변경되면 추가 데이터 fetch
   useEffect(() => {
     if (page > 1) {
-      fetchVehicles(page, false);
+      fetchVehicles(page, false, search ? [] : needsInspectionCarNumsRef.current);
     }
-  }, [page]);
+  }, [page, search]);
 
   // 페이지 visibility 변경 시 데이터 새로고침 (다른 페이지에서 돌아왔을 때)
   useEffect(() => {
@@ -113,7 +148,7 @@ export default function Home() {
     return () => observer.disconnect();
   }, [hasMore, loading, loadingMore]);
 
-  const fetchVehicles = async (pageNum: number, isReset: boolean) => {
+  const fetchVehicles = async (pageNum: number, isReset: boolean, priorityCarNums: string[] = []) => {
     if (isFetching.current && isReset) return;
 
     try {
@@ -125,7 +160,12 @@ export default function Home() {
       }
 
       const params = new URLSearchParams();
-      if (search) params.append('search', search);
+      if (search) {
+        params.append('search', search);
+      } else if (priorityCarNums.length > 0) {
+        // 검색이 아닐 때만 우선순위 정렬 적용
+        params.append('priorityCarNums', priorityCarNums.join(','));
+      }
       params.append('page', pageNum.toString());
       params.append('limit', '15');
 
@@ -176,28 +216,6 @@ export default function Home() {
         totalVehicles: vehicles.length,
         recentInspections: 0,
       });
-    }
-  };
-
-  const fetchReservationStats = async () => {
-    try {
-      const res = await fetch('/api/reservations/stats');
-      if (res.ok) {
-        const data = await res.json();
-        setReservationStats({
-          inUseCount: data.inUseCount || 0,
-          upcomingReservationsCount: data.upcomingReservationsCount || 0,
-          needsInspectionCount: data.needsInspectionCount || 0,
-          inUseCarNums: data.inUseCarNums || [],
-          upcomingCarNums: data.upcomingCarNums || [],
-          needsInspectionCarNums: data.needsInspectionCarNums || [],
-          vehicleStatusMap: data.vehicleStatusMap || {},
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching reservation stats:', error);
-    } finally {
-      setStatsLoaded(true);
     }
   };
 
@@ -290,11 +308,6 @@ export default function Home() {
   };
 
   const displayVehicles = activeFilter !== 'all' ? filteredVehicles : sortedVehicles(vehicles);
-
-  // 예약 통계도 함께 로드
-  useEffect(() => {
-    fetchReservationStats();
-  }, []);
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%)' }}>

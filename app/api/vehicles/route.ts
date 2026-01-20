@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search');
     const vehicleNumbers = searchParams.get('vehicleNumbers'); // 차량번호 목록으로 필터링
+    const priorityCarNums = searchParams.get('priorityCarNums'); // 우선 정렬할 차량번호 목록
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const skip = (page - 1) * limit;
@@ -40,32 +41,100 @@ export async function GET(request: NextRequest) {
         where = { vehicleNumber: { in: numbers } };
       }
     } else if (search) {
+      // 검색어로 필터링 (차량번호, 소유자명, 모델명 부분 일치)
       where = {
         OR: [
           { vehicleNumber: { contains: search, mode: 'insensitive' as const } },
           { ownerName: { contains: search, mode: 'insensitive' as const } },
+          { model: { contains: search, mode: 'insensitive' as const } },
         ],
       };
     }
 
+    const selectFields = {
+      id: true,
+      vehicleNumber: true,
+      ownerName: true,
+      model: true,
+      manufacturer: true,
+      inspections: {
+        take: 1,
+        orderBy: { inspectionDate: 'desc' as const },
+        select: { inspectionDate: true },
+      },
+    };
+
+    // 우선 정렬할 차량번호가 있는 경우: 두 번의 쿼리로 처리
+    if (priorityCarNums && !search && !vehicleNumbers) {
+      const priorityNums = priorityCarNums.split(',').map(n => n.trim()).filter(n => n);
+      const prioritySet = new Set(priorityNums);
+
+      // 1. 우선 차량 먼저 조회 (점검필요 차량)
+      const priorityVehicles = priorityNums.length > 0 ? await prisma.vehicle.findMany({
+        where: { vehicleNumber: { in: priorityNums } },
+        select: selectFields,
+      }) : [];
+
+      // 2. 나머지 차량 조회 (페이지네이션 적용)
+      const remainingWhere = priorityNums.length > 0
+        ? { vehicleNumber: { notIn: priorityNums } }
+        : {};
+
+      const remainingCount = await prisma.vehicle.count({ where: remainingWhere });
+      const totalWithPriority = priorityVehicles.length + remainingCount;
+
+      // 우선 차량 수를 고려한 페이지네이션
+      let resultVehicles: typeof priorityVehicles = [];
+      const priorityCount = priorityVehicles.length;
+
+      if (page === 1) {
+        // 첫 페이지: 우선 차량 + 나머지 차량 (limit까지)
+        const remainingLimit = Math.max(0, limit - priorityCount);
+        const remainingVehicles = remainingLimit > 0 ? await prisma.vehicle.findMany({
+          where: remainingWhere,
+          take: remainingLimit,
+          orderBy: { vehicleNumber: 'asc' },
+          select: selectFields,
+        }) : [];
+
+        // 우선 차량을 차량번호 오름차순 정렬
+        priorityVehicles.sort((a, b) => a.vehicleNumber.localeCompare(b.vehicleNumber, 'ko'));
+        resultVehicles = [...priorityVehicles, ...remainingVehicles];
+      } else {
+        // 2페이지 이후: 우선 차량 이후부터 계산
+        const adjustedSkip = Math.max(0, skip - priorityCount);
+        const remainingVehicles = await prisma.vehicle.findMany({
+          where: remainingWhere,
+          skip: adjustedSkip,
+          take: limit,
+          orderBy: { vehicleNumber: 'asc' },
+          select: selectFields,
+        });
+        resultVehicles = remainingVehicles;
+      }
+
+      const response = NextResponse.json({
+        vehicles: resultVehicles,
+        pagination: {
+          page,
+          limit,
+          total: totalWithPriority,
+          totalPages: Math.ceil(totalWithPriority / limit),
+        },
+      });
+
+      response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30');
+      return response;
+    }
+
+    // 기본 조회 (우선 정렬 없이)
     const [vehicles, total] = await Promise.all([
       prisma.vehicle.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { updatedAt: 'desc' },
-        select: {
-          id: true,
-          vehicleNumber: true,
-          ownerName: true,
-          model: true,
-          manufacturer: true,
-          inspections: {
-            take: 1,
-            orderBy: { inspectionDate: 'desc' },
-            select: { inspectionDate: true },
-          },
-        },
+        orderBy: { vehicleNumber: 'asc' },
+        select: selectFields,
       }),
       prisma.vehicle.count({ where }),
     ]);
@@ -91,9 +160,9 @@ export async function GET(request: NextRequest) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorDetails = error instanceof Error ? error.stack : String(error);
     console.error('Error details:', errorDetails);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch vehicles',
         message: errorMessage,
         details: process.env.NODE_ENV === 'development' ? errorDetails : undefined,
