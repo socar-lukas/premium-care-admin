@@ -25,18 +25,28 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search');
+    const vehicleNumbers = searchParams.get('vehicleNumbers'); // 차량번호 목록으로 필터링
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const skip = (page - 1) * limit;
 
-    const where = search
-      ? {
-          OR: [
-            { vehicleNumber: { contains: search, mode: 'insensitive' as const } },
-            { ownerName: { contains: search, mode: 'insensitive' as const } },
-          ],
-        }
-      : {};
+    // where 조건 구성
+    let where: Record<string, unknown> = {};
+
+    if (vehicleNumbers) {
+      // 차량번호 목록으로 필터링 (쉼표로 구분)
+      const numbers = vehicleNumbers.split(',').map(n => n.trim()).filter(n => n);
+      if (numbers.length > 0) {
+        where = { vehicleNumber: { in: numbers } };
+      }
+    } else if (search) {
+      where = {
+        OR: [
+          { vehicleNumber: { contains: search, mode: 'insensitive' as const } },
+          { ownerName: { contains: search, mode: 'insensitive' as const } },
+        ],
+      };
+    }
 
     const [vehicles, total] = await Promise.all([
       prisma.vehicle.findMany({

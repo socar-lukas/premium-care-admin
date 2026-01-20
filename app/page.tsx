@@ -40,6 +40,8 @@ export default function Home() {
     needsInspectionCarNums: [] as string[],
   });
   const [activeFilter, setActiveFilter] = useState<'all' | 'upcoming' | 'needsInspection'>('all');
+  const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
+  const [loadingFiltered, setLoadingFiltered] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
   const lastFetchTime = useRef<number>(0);
   const isFetching = useRef<boolean>(false);
@@ -190,17 +192,43 @@ export default function Home() {
     }
   };
 
-  // 필터된 차량 목록
-  const filteredVehicles = vehicles.filter(v => {
-    if (activeFilter === 'all') return true;
+  // 필터 차량번호로 차량 목록 조회
+  const fetchFilteredVehicles = async (vehicleNumbers: string[]) => {
+    if (vehicleNumbers.length === 0) {
+      setFilteredVehicles([]);
+      return;
+    }
+
+    setLoadingFiltered(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('vehicleNumbers', vehicleNumbers.join(','));
+      params.append('limit', '100'); // 필터된 차량은 전체 조회
+
+      const res = await fetch(`/api/vehicles?${params}`);
+      const data = await res.json();
+      setFilteredVehicles(data.vehicles || []);
+    } catch (error) {
+      console.error('Error fetching filtered vehicles:', error);
+      setFilteredVehicles([]);
+    } finally {
+      setLoadingFiltered(false);
+    }
+  };
+
+  // 필터 변경 시 해당 차량 조회
+  useEffect(() => {
     if (activeFilter === 'upcoming') {
-      return reservationStats.upcomingCarNums.includes(v.vehicleNumber);
+      fetchFilteredVehicles(reservationStats.upcomingCarNums);
+    } else if (activeFilter === 'needsInspection') {
+      fetchFilteredVehicles(reservationStats.needsInspectionCarNums);
+    } else {
+      setFilteredVehicles([]);
     }
-    if (activeFilter === 'needsInspection') {
-      return reservationStats.needsInspectionCarNums.includes(v.vehicleNumber);
-    }
-    return true;
-  });
+  }, [activeFilter, reservationStats.upcomingCarNums, reservationStats.needsInspectionCarNums]);
+
+  // 표시할 차량 목록 (필터 활성화 시 filteredVehicles, 아니면 vehicles)
+  const displayVehicles = activeFilter !== 'all' ? filteredVehicles : vehicles;
 
   // 예약 통계도 함께 로드
   useEffect(() => {
@@ -381,7 +409,7 @@ export default function Home() {
           <div className="p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base md:text-lg font-semibold text-gray-900">
-                차량 목록 {activeFilter !== 'all' ? `(${filteredVehicles.length}대)` : `(${stats.totalVehicles}대)`}
+                차량 목록 {activeFilter !== 'all' ? `(${displayVehicles.length}대)` : `(${stats.totalVehicles}대)`}
               </h2>
               {activeFilter !== 'all' && (
                 <button
@@ -399,7 +427,7 @@ export default function Home() {
                 </button>
               )}
             </div>
-            {loading ? (
+            {(loading || loadingFiltered) ? (
               <div className="space-y-3">
                 {/* 스켈레톤 로딩 */}
                 {[...Array(5)].map((_, i) => (
@@ -414,7 +442,7 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-            ) : filteredVehicles.length === 0 ? (
+            ) : displayVehicles.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 {activeFilter !== 'all' ? '해당 조건의 차량이 없습니다.' : '등록된 차량이 없습니다.'}
               </div>
@@ -422,7 +450,7 @@ export default function Home() {
               <>
                 {/* 모바일: 카드 형태 - 스크롤 컨테이너 */}
                 <div className="md:hidden space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-                  {filteredVehicles.map((vehicle, index) => (
+                  {displayVehicles.map((vehicle, index) => (
                     <Link
                       key={vehicle.id}
                       href={`/vehicles/${vehicle.id}`}
@@ -457,18 +485,18 @@ export default function Home() {
                     </Link>
                   ))}
 
-                  {/* 무한 스크롤 트리거 (모바일) */}
-                  <div ref={observerTarget} className="h-4" />
+                  {/* 무한 스크롤 트리거 (모바일) - 필터 비활성화일 때만 */}
+                  {activeFilter === 'all' && <div ref={observerTarget} className="h-4" />}
 
                   {/* 로딩 인디케이터 */}
-                  {loadingMore && (
+                  {loadingMore && activeFilter === 'all' && (
                     <div className="text-center py-4 text-gray-500">
                       더 불러오는 중...
                     </div>
                   )}
 
                   {/* 모든 데이터 로드 완료 */}
-                  {!hasMore && filteredVehicles.length > 0 && activeFilter === 'all' && (
+                  {!hasMore && displayVehicles.length > 0 && activeFilter === 'all' && (
                     <div className="text-center py-4 text-gray-400 text-sm">
                       모든 차량을 불러왔습니다
                     </div>
@@ -495,7 +523,7 @@ export default function Home() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredVehicles.map((vehicle) => (
+                      {displayVehicles.map((vehicle) => (
                         <tr key={vehicle.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {vehicle.vehicleNumber}
@@ -523,18 +551,18 @@ export default function Home() {
                     </tbody>
                   </table>
 
-                  {/* 무한 스크롤 트리거 (데스크톱) */}
-                  <div ref={observerTarget} className="h-4" />
+                  {/* 무한 스크롤 트리거 (데스크톱) - 필터 비활성화일 때만 */}
+                  {activeFilter === 'all' && <div ref={observerTarget} className="h-4" />}
 
                   {/* 로딩 인디케이터 */}
-                  {loadingMore && (
+                  {loadingMore && activeFilter === 'all' && (
                     <div className="text-center py-4 text-gray-500">
                       더 불러오는 중...
                     </div>
                   )}
 
                   {/* 모든 데이터 로드 완료 */}
-                  {!hasMore && filteredVehicles.length > 0 && activeFilter === 'all' && (
+                  {!hasMore && displayVehicles.length > 0 && activeFilter === 'all' && (
                     <div className="text-center py-4 text-gray-400 text-sm">
                       모든 차량을 불러왔습니다
                     </div>
