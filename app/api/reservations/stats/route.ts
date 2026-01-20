@@ -145,8 +145,12 @@ export async function GET() {
     );
 
     // 차량별 예약 상태 정보 (차량 목록에서 사용)
-    // 각 차량의 현재 상태: 운행중 / 대기중
-    const vehicleStatusMap: Record<string, { status: '운행중' | '대기중'; needsInspection: boolean }> = {};
+    // 각 차량의 현재 상태: 운행중 / 대기중 + 차량명
+    const vehicleStatusMap: Record<string, {
+      status: '운행중' | '대기중';
+      needsInspection: boolean;
+      carName: string;
+    }> = {};
 
     // 모든 예약 데이터에서 차량별 상태 계산
     for (const r of reservations) {
@@ -158,14 +162,19 @@ export async function GET() {
         vehicleStatusMap[r.car_num] = {
           ...vehicleStatusMap[r.car_num],
           status: '운행중',
-          needsInspection: vehicleStatusMap[r.car_num]?.needsInspection || false
+          needsInspection: vehicleStatusMap[r.car_num]?.needsInspection || false,
+          carName: r.car_name || vehicleStatusMap[r.car_num]?.carName || ''
         };
       } else if (!vehicleStatusMap[r.car_num]) {
         // 아직 상태가 없으면 대기중으로 설정
         vehicleStatusMap[r.car_num] = {
           status: '대기중',
-          needsInspection: false
+          needsInspection: false,
+          carName: r.car_name || ''
         };
+      } else if (!vehicleStatusMap[r.car_num].carName && r.car_name) {
+        // carName이 없으면 추가
+        vehicleStatusMap[r.car_num].carName = r.car_name;
       }
     }
 
@@ -176,7 +185,8 @@ export async function GET() {
       } else {
         vehicleStatusMap[r.car_num] = {
           status: '대기중',
-          needsInspection: true
+          needsInspection: true,
+          carName: r.car_name || ''
         };
       }
     }

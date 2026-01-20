@@ -40,7 +40,7 @@ export default function Home() {
     inUseCarNums: [] as string[],
     upcomingCarNums: [] as string[],
     needsInspectionCarNums: [] as string[],
-    vehicleStatusMap: {} as Record<string, { status: '운행중' | '대기중'; needsInspection: boolean }>,
+    vehicleStatusMap: {} as Record<string, { status: '운행중' | '대기중'; needsInspection: boolean; carName: string }>,
   });
   const [activeFilter, setActiveFilter] = useState<'all' | 'inUse' | 'upcoming' | 'needsInspection'>('all');
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
@@ -199,7 +199,7 @@ export default function Home() {
   };
 
   // 필터 차량번호로 차량 목록 조회
-  const fetchFilteredVehicles = async (vehicleNumbers: string[]) => {
+  const fetchFilteredVehicles = async (vehicleNumbers: string[], statusMap: typeof reservationStats.vehicleStatusMap) => {
     if (vehicleNumbers.length === 0) {
       setFilteredVehicles([]);
       return;
@@ -213,7 +213,40 @@ export default function Home() {
 
       const res = await fetch(`/api/vehicles?${params}`);
       const data = await res.json();
-      setFilteredVehicles(data.vehicles || []);
+      const dbVehicles: Vehicle[] = data.vehicles || [];
+
+      // DB에 있는 차량번호 Set
+      const dbVehicleNumbers = new Set(dbVehicles.map(v => v.vehicleNumber));
+
+      // DB에 없지만 필터에 있는 차량 추가 (Google Sheets에만 있는 차량)
+      const placeholderVehicles: Vehicle[] = vehicleNumbers
+        .filter(num => !dbVehicleNumbers.has(num))
+        .map(num => ({
+          id: `placeholder-${num}`,
+          vehicleNumber: num,
+          ownerName: '',
+          model: statusMap[num]?.carName || null,
+          manufacturer: null,
+          inspections: [],
+        }));
+
+      // 모든 차량 합치기
+      const allVehicles = [...dbVehicles, ...placeholderVehicles];
+
+      // 정렬: 점검필요 먼저, 그 다음 차량번호 오름차순
+      allVehicles.sort((a, b) => {
+        const aNeedsInspection = statusMap[a.vehicleNumber]?.needsInspection || false;
+        const bNeedsInspection = statusMap[b.vehicleNumber]?.needsInspection || false;
+
+        // 점검필요 차량 먼저
+        if (aNeedsInspection && !bNeedsInspection) return -1;
+        if (!aNeedsInspection && bNeedsInspection) return 1;
+
+        // 그 다음 차량번호 오름차순
+        return a.vehicleNumber.localeCompare(b.vehicleNumber, 'ko');
+      });
+
+      setFilteredVehicles(allVehicles);
     } catch (error) {
       console.error('Error fetching filtered vehicles:', error);
       setFilteredVehicles([]);
@@ -224,19 +257,36 @@ export default function Home() {
 
   // 필터 변경 시 해당 차량 조회
   useEffect(() => {
+    const statusMap = reservationStats.vehicleStatusMap;
     if (activeFilter === 'inUse') {
-      fetchFilteredVehicles(reservationStats.inUseCarNums);
+      fetchFilteredVehicles(reservationStats.inUseCarNums, statusMap);
     } else if (activeFilter === 'upcoming') {
-      fetchFilteredVehicles(reservationStats.upcomingCarNums);
+      fetchFilteredVehicles(reservationStats.upcomingCarNums, statusMap);
     } else if (activeFilter === 'needsInspection') {
-      fetchFilteredVehicles(reservationStats.needsInspectionCarNums);
+      fetchFilteredVehicles(reservationStats.needsInspectionCarNums, statusMap);
     } else {
       setFilteredVehicles([]);
     }
-  }, [activeFilter, reservationStats.inUseCarNums, reservationStats.upcomingCarNums, reservationStats.needsInspectionCarNums]);
+  }, [activeFilter, reservationStats]);
 
   // 표시할 차량 목록 (필터 활성화 시 filteredVehicles, 아니면 vehicles)
-  const displayVehicles = activeFilter !== 'all' ? filteredVehicles : vehicles;
+  // 정렬: 점검필요 먼저, 그 다음 차량번호 오름차순
+  const sortedVehicles = (list: Vehicle[]) => {
+    const statusMap = reservationStats.vehicleStatusMap;
+    return [...list].sort((a, b) => {
+      const aNeedsInspection = statusMap[a.vehicleNumber]?.needsInspection || false;
+      const bNeedsInspection = statusMap[b.vehicleNumber]?.needsInspection || false;
+
+      // 점검필요 차량 먼저
+      if (aNeedsInspection && !bNeedsInspection) return -1;
+      if (!aNeedsInspection && bNeedsInspection) return 1;
+
+      // 그 다음 차량번호 오름차순
+      return a.vehicleNumber.localeCompare(b.vehicleNumber, 'ko');
+    });
+  };
+
+  const displayVehicles = activeFilter !== 'all' ? filteredVehicles : sortedVehicles(vehicles);
 
   // 예약 통계도 함께 로드
   useEffect(() => {
@@ -465,12 +515,17 @@ export default function Home() {
                     const vehicleStatus = reservationStats.vehicleStatusMap[vehicle.vehicleNumber];
                     const isInUse = vehicleStatus?.status === '운행중';
                     const needsInspection = vehicleStatus?.needsInspection;
+                    const isPlaceholder = vehicle.id.startsWith('placeholder-');
+
+                    const CardWrapper = isPlaceholder ? 'div' : Link;
+                    const cardProps = isPlaceholder
+                      ? { className: "block glass-card rounded-xl p-4 border border-orange-200 bg-orange-50/50" }
+                      : { href: `/vehicles/${vehicle.id}`, className: "block glass-card rounded-xl p-4 border border-white/30 active:scale-[0.98] transition-all duration-200" };
 
                     return (
-                    <Link
+                    <CardWrapper
                       key={vehicle.id}
-                      href={`/vehicles/${vehicle.id}`}
-                      className="block glass-card rounded-xl p-4 border border-white/30 active:scale-[0.98] transition-all duration-200"
+                      {...cardProps as any}
                       style={{ animationDelay: `${index * 0.1}s` }}
                     >
                       <div className="flex justify-between items-start mb-2">
@@ -479,14 +534,20 @@ export default function Home() {
                             {vehicle.vehicleNumber}
                           </h3>
                           <p className="text-sm text-gray-600 font-medium">
-                            {vehicle.manufacturer} {vehicle.model}
+                            {vehicle.model || '차량 정보 없음'}
                           </p>
                         </div>
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
-                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </div>
+                        {isPlaceholder ? (
+                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-orange-100 text-orange-700">
+                            미등록
+                          </span>
+                        ) : (
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        )}
                       </div>
                       {/* 상태 태그 */}
                       <div className="flex flex-wrap gap-1.5 mt-2">
@@ -505,7 +566,7 @@ export default function Home() {
                           </span>
                         )}
                       </div>
-                    </Link>
+                    </CardWrapper>
                   );
                   })}
 
@@ -554,14 +615,15 @@ export default function Home() {
                         const vehicleStatus = reservationStats.vehicleStatusMap[vehicle.vehicleNumber];
                         const isInUse = vehicleStatus?.status === '운행중';
                         const needsInspection = vehicleStatus?.needsInspection;
+                        const isPlaceholder = vehicle.id.startsWith('placeholder-');
 
                         return (
-                        <tr key={vehicle.id} className="hover:bg-gray-50">
+                        <tr key={vehicle.id} className={`hover:bg-gray-50 ${isPlaceholder ? 'bg-orange-50/50' : ''}`}>
                           <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {vehicle.vehicleNumber}
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {vehicle.manufacturer} {vehicle.model}
+                            {vehicle.manufacturer} {vehicle.model || (isPlaceholder ? '차량 정보 없음' : '')}
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm">
                             {vehicleStatus ? (
@@ -586,12 +648,18 @@ export default function Home() {
                             )}
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
-                            <Link
-                              href={`/vehicles/${vehicle.id}`}
-                              className="text-blue-600 hover:text-blue-900"
-                            >
-                              상세보기
-                            </Link>
+                            {isPlaceholder ? (
+                              <span className="px-2 py-1 rounded-lg text-xs font-medium bg-orange-100 text-orange-700">
+                                미등록
+                              </span>
+                            ) : (
+                              <Link
+                                href={`/vehicles/${vehicle.id}`}
+                                className="text-blue-600 hover:text-blue-900"
+                              >
+                                상세보기
+                              </Link>
+                            )}
                           </td>
                         </tr>
                       );
