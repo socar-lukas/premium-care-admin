@@ -95,6 +95,7 @@ function InspectionForm() {
     interior: [],
   });
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
 
   // 담당자 목록 로드 & 시작 시간 표시 (클라이언트에서만)
   useEffect(() => {
@@ -236,12 +237,14 @@ function InspectionForm() {
 
       if (allPhotos.length > 0 && inspection.areas && inspection.areas.length > 0) {
         setUploadingPhotos(true);
+        setUploadProgress({ current: 0, total: allPhotos.length });
 
         // 사진 영역 ID (기본 영역 사용)
         const photoAreaId = inspection.areas[0].id;
+        let uploadedCount = 0;
 
-        // 병렬 업로드 (최대 3개씩 동시 업로드)
-        const BATCH_SIZE = 3;
+        // 병렬 업로드 (최대 5개씩 동시 업로드)
+        const BATCH_SIZE = 5;
         for (let i = 0; i < allPhotos.length; i += BATCH_SIZE) {
           const batch = allPhotos.slice(i, i + BATCH_SIZE);
           await Promise.all(
@@ -259,8 +262,12 @@ function InspectionForm() {
                   method: 'POST',
                   body: formData,
                 });
+                uploadedCount++;
+                setUploadProgress({ current: uploadedCount, total: allPhotos.length });
               } catch (photoError) {
                 console.error(`Error uploading photo ${photoType}:`, photoError);
+                uploadedCount++;
+                setUploadProgress({ current: uploadedCount, total: allPhotos.length });
               }
             })
           );
@@ -772,7 +779,9 @@ function InspectionForm() {
                 className="flex-1 py-3 text-white rounded-xl font-medium disabled:opacity-40 transition-all active:scale-95"
                 style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}
               >
-                {uploadingPhotos ? '사진 업로드 중...' : submitting ? '등록 중...' : '등록하기'}
+                {uploadingPhotos
+                  ? `사진 업로드 중... (${uploadProgress.current}/${uploadProgress.total})`
+                  : submitting ? '등록 중...' : '등록하기'}
               </button>
             </div>
           </form>

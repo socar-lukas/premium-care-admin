@@ -57,6 +57,9 @@ export async function uploadBufferToCloudinary(
       overwrite: false,
       use_filename: false, // public_id를 직접 사용
       unique_filename: true, // 중복 시 자동으로 고유 ID 추가
+      // 성능 최적화
+      quality: 'auto:good',
+      fetch_format: 'auto',
     });
 
     return {

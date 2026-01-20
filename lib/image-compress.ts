@@ -1,12 +1,13 @@
 // 클라이언트 사이드 이미지 압축 유틸리티
+// 더 강한 압축으로 업로드 속도 개선
 
-const MAX_WIDTH = 1920;
-const MAX_HEIGHT = 1920;
-const QUALITY = 0.7;
+const MAX_WIDTH = 1280;
+const MAX_HEIGHT = 1280;
+const QUALITY = 0.5;
 
 export async function compressImage(file: File): Promise<File> {
   // 이미 작은 이미지는 압축하지 않음
-  if (file.size < 500 * 1024) { // 500KB 이하
+  if (file.size < 200 * 1024) { // 200KB 이하
     return file;
   }
 
