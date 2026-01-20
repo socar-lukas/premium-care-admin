@@ -33,6 +33,10 @@ export default function Home() {
     totalVehicles: 0,
     recentInspections: 0,
   });
+  const [reservationStats, setReservationStats] = useState({
+    upcomingReservationsCount: 0,
+    needsInspectionCount: 0,
+  });
   const observerTarget = useRef<HTMLDivElement>(null);
   const lastFetchTime = useRef<number>(0);
   const isFetching = useRef<boolean>(false);
@@ -166,6 +170,26 @@ export default function Home() {
     }
   };
 
+  const fetchReservationStats = async () => {
+    try {
+      const res = await fetch('/api/reservations/stats');
+      if (res.ok) {
+        const data = await res.json();
+        setReservationStats({
+          upcomingReservationsCount: data.upcomingReservationsCount || 0,
+          needsInspectionCount: data.needsInspectionCount || 0,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching reservation stats:', error);
+    }
+  };
+
+  // 예약 통계도 함께 로드
+  useEffect(() => {
+    fetchReservationStats();
+  }, []);
+
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%)' }}>
       <nav className="glass-card sticky top-0 z-30 border-b border-white/20">
@@ -237,37 +261,76 @@ export default function Home() {
 
       <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 md:py-8">
         {/* 통계 카드 */}
-        <div className="grid grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8 animate-fade-in-up">
-          <div className="stat-card rounded-2xl p-5 md:p-7 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl" style={{ background: 'rgba(102, 176, 255, 0.25)' }}></div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8 animate-fade-in-up">
+          {/* D+1 예약건수 */}
+          <div className="stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl" style={{ background: 'rgba(249, 115, 22, 0.2)' }}></div>
             <div className="relative">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)' }}>
+                  <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-semibold text-gray-600">D+1 예약</h3>
+              </div>
+              <p className="text-2xl md:text-3xl font-bold" style={{ color: '#EA580C' }}>
+                {reservationStats.upcomingReservationsCount}
+              </p>
+            </div>
+          </div>
+
+          {/* 세차·점검 필요 */}
+          <div className="stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl" style={{ background: 'rgba(239, 68, 68, 0.2)' }}></div>
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)' }}>
+                  <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-semibold text-gray-600">점검 필요</h3>
+              </div>
+              <p className="text-2xl md:text-3xl font-bold" style={{ color: '#DC2626' }}>
+                {reservationStats.needsInspectionCount}
+              </p>
+            </div>
+          </div>
+
+          {/* 전체 차량 */}
+          <div className="stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl" style={{ background: 'rgba(102, 176, 255, 0.25)' }}></div>
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
+                  <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
                   </svg>
                 </div>
-                <h3 className="text-xs md:text-sm font-semibold text-gray-600">전체 차량</h3>
+                <h3 className="text-xs font-semibold text-gray-600">전체 차량</h3>
               </div>
-              <p className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                {loading && stats.totalVehicles === 0 ? <span className="inline-block w-12 h-8 bg-gray-200 rounded animate-pulse"></span> : stats.totalVehicles}
+              <p className="text-2xl md:text-3xl font-bold" style={{ color: '#0078FF' }}>
+                {loading && stats.totalVehicles === 0 ? <span className="inline-block w-10 h-7 bg-gray-200 rounded animate-pulse"></span> : stats.totalVehicles}
               </p>
             </div>
           </div>
-          <div className="stat-card rounded-2xl p-5 md:p-7 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl" style={{ background: 'rgba(51, 147, 255, 0.2)' }}></div>
+
+          {/* 오늘 점검 */}
+          <div className="stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl" style={{ background: 'rgba(34, 197, 94, 0.2)' }}></div>
             <div className="relative">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #3393FF 0%, #0078FF 100%)' }}>
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)' }}>
+                  <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
                 </div>
-                <h3 className="text-xs md:text-sm font-semibold text-gray-600">오늘 점검</h3>
+                <h3 className="text-xs font-semibold text-gray-600">오늘 점검</h3>
               </div>
-              <p className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, #3393FF 0%, #0078FF 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                {loading && stats.recentInspections === 0 ? <span className="inline-block w-8 h-8 bg-gray-200 rounded animate-pulse"></span> : stats.recentInspections}
+              <p className="text-2xl md:text-3xl font-bold" style={{ color: '#16A34A' }}>
+                {loading && stats.recentInspections === 0 ? <span className="inline-block w-8 h-7 bg-gray-200 rounded animate-pulse"></span> : stats.recentInspections}
               </p>
             </div>
           </div>
