@@ -45,6 +45,7 @@ export default function Home() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'inUse' | 'upcoming' | 'needsInspection'>('all');
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [loadingFiltered, setLoadingFiltered] = useState(false);
+  const [statsLoaded, setStatsLoaded] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
   const lastFetchTime = useRef<number>(0);
   const isFetching = useRef<boolean>(false);
@@ -195,6 +196,8 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error fetching reservation stats:', error);
+    } finally {
+      setStatsLoaded(true);
     }
   };
 
@@ -488,7 +491,7 @@ export default function Home() {
                 </button>
               )}
             </div>
-            {(loading || loadingFiltered) ? (
+            {(loading || loadingFiltered || !statsLoaded) ? (
               <div className="space-y-3">
                 {/* 스켈레톤 로딩 */}
                 {[...Array(5)].map((_, i) => (
