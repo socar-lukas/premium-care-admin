@@ -240,23 +240,30 @@ function InspectionForm() {
         // 사진 영역 ID (기본 영역 사용)
         const photoAreaId = inspection.areas[0].id;
 
-        for (const { type: photoType, file } of allPhotos) {
-          const formData = new FormData();
-          formData.append('inspectionAreaId', photoAreaId);
-          formData.append('files', file);
-          formData.append('description', photoType);
-          // 점검전/점검후 구분
-          const photoPhase = photoType.startsWith('before_') ? 'before' : 'after';
-          formData.append('photoPhase', photoPhase);
+        // 병렬 업로드 (최대 3개씩 동시 업로드)
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < allPhotos.length; i += BATCH_SIZE) {
+          const batch = allPhotos.slice(i, i + BATCH_SIZE);
+          await Promise.all(
+            batch.map(async ({ type: photoType, file }) => {
+              const formData = new FormData();
+              formData.append('inspectionAreaId', photoAreaId);
+              formData.append('files', file);
+              formData.append('description', photoType);
+              // 점검전/점검후 구분
+              const photoPhase = photoType.startsWith('before_') ? 'before' : 'after';
+              formData.append('photoPhase', photoPhase);
 
-          try {
-            await fetch('/api/photos/upload', {
-              method: 'POST',
-              body: formData,
-            });
-          } catch (photoError) {
-            console.error(`Error uploading photo ${photoType}:`, photoError);
-          }
+              try {
+                await fetch('/api/photos/upload', {
+                  method: 'POST',
+                  body: formData,
+                });
+              } catch (photoError) {
+                console.error(`Error uploading photo ${photoType}:`, photoError);
+              }
+            })
+          );
         }
       }
 

@@ -561,6 +561,12 @@ export default function Home() {
                           </div>
                         )}
                       </div>
+                      {/* 최근 점검일 */}
+                      {vehicle.inspections && vehicle.inspections[0] && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          점검: {new Date(vehicle.inspections[0].inspectionDate).toLocaleDateString('ko-KR')}
+                        </p>
+                      )}
                       {/* 상태 태그 */}
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {vehicleStatus && (
@@ -612,6 +618,9 @@ export default function Home() {
                           제조사/모델
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          최근 점검일
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           예약 상태
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -636,6 +645,13 @@ export default function Home() {
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                             {vehicle.manufacturer} {vehicle.model || (isPlaceholder ? '차량 정보 없음' : '')}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {vehicle.inspections && vehicle.inspections[0] ? (
+                              new Date(vehicle.inspections[0].inspectionDate).toLocaleDateString('ko-KR')
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm">
                             {vehicleStatus ? (

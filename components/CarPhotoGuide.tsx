@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { compressImages } from '@/lib/image-compress';
 
 // 차량 촬영 가이드 타입 (4방향 + 내부)
 export type PhotoGuideType = 'front' | 'rear' | 'left' | 'right' | 'interior';
@@ -137,14 +138,29 @@ interface MultiPhotoUploadCardProps {
 export function MultiPhotoUploadCard({ guide, photos, onPhotosChange }: MultiPhotoUploadCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [compressing, setCompressing] = useState(false);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      const newPhotos = [...photos, ...files];
-      onPhotosChange(newPhotos);
-      const newUrls = files.map(f => URL.createObjectURL(f));
-      setPreviewUrls(prev => [...prev, ...newUrls]);
+      setCompressing(true);
+      try {
+        // 이미지 압축 (병렬 처리)
+        const compressedFiles = await compressImages(files);
+        const newPhotos = [...photos, ...compressedFiles];
+        onPhotosChange(newPhotos);
+        const newUrls = compressedFiles.map(f => URL.createObjectURL(f));
+        setPreviewUrls(prev => [...prev, ...newUrls]);
+      } catch (error) {
+        console.error('Error compressing images:', error);
+        // 압축 실패 시 원본 사용
+        const newPhotos = [...photos, ...files];
+        onPhotosChange(newPhotos);
+        const newUrls = files.map(f => URL.createObjectURL(f));
+        setPreviewUrls(prev => [...prev, ...newUrls]);
+      } finally {
+        setCompressing(false);
+      }
     }
     if (inputRef.current) {
       inputRef.current.value = '';
@@ -210,16 +226,23 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange }: MultiPho
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="w-full h-full flex flex-col items-center justify-center p-1 hover:bg-gray-100 transition-colors"
+            disabled={compressing}
+            className="w-full h-full flex flex-col items-center justify-center p-1 hover:bg-gray-100 transition-colors disabled:opacity-50"
           >
-            <div className="w-12 h-10 mb-1 opacity-50">
-              <CarSilhouette angle={guide.type} />
-            </div>
-            <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center shadow">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </div>
+            {compressing ? (
+              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <div className="w-12 h-10 mb-1 opacity-50">
+                  <CarSilhouette angle={guide.type} />
+                </div>
+                <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center shadow">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+              </>
+            )}
           </button>
         )}
 
@@ -227,7 +250,6 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange }: MultiPho
           ref={inputRef}
           type="file"
           accept="image/*"
-          capture="environment"
           multiple
           onChange={handleFileChange}
           className="hidden"
