@@ -108,10 +108,12 @@ export async function GET() {
     });
 
     // 2. 실시간 세차·점검 필요 대수: end_at_kst가 현재시간 이전이고 state가 "완료"인 예약 중
-    //    해당 차량에 점검 이력이 없는 차량 대수
+    //    완료 후 9시간 이내이고, 해당 차량에 점검 이력이 없는 차량 대수
+    const nineHoursAgo = new Date(now.getTime() - 9 * 60 * 60 * 1000);
     const completedReservations = reservations.filter(r => {
       if (!r.end_at_kst || r.state !== '완료') return false;
-      return r.end_at_kst < now;
+      // 완료 시간이 현재보다 이전이고, 9시간 이내인 경우만
+      return r.end_at_kst < now && r.end_at_kst > nineHoursAgo;
     });
 
     // 완료된 예약의 차량번호 목록 (중복 제거)
@@ -119,6 +121,7 @@ export async function GET() {
 
     // 각 차량의 최근 점검 이력 확인
     let needsInspectionCount = 0;
+    const needsInspectionCarNums: string[] = [];
 
     if (completedCarNums.length > 0) {
       // 차량번호로 차량 조회
@@ -154,23 +157,20 @@ export async function GET() {
             vehicle.inspections.length === 0 ||
             vehicle.inspections[0].inspectionDate < latestCompletion.end_at_kst) {
           needsInspectionCount++;
+          needsInspectionCarNums.push(carNum);
         }
       }
     }
 
+    // D+1 예약 차량번호 목록 (중복 제거)
+    const upcomingCarNums = [...new Set(upcomingReservations.map(r => r.car_num))];
+
     return NextResponse.json({
       upcomingReservationsCount: upcomingReservations.length,
       needsInspectionCount,
-      // 디버깅용 상세 정보
-      debug: {
-        totalReservations: reservations.length,
-        upcomingReservations: upcomingReservations.map(r => ({
-          car_num: r.car_num,
-          start_at_kst: r.start_at_kst?.toISOString(),
-          state: r.state
-        })),
-        completedCarNums: completedCarNums.length,
-      }
+      // 필터링용 차량번호 목록
+      upcomingCarNums,
+      needsInspectionCarNums,
     });
   } catch (error) {
     console.error('Error fetching reservation stats:', error);

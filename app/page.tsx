@@ -36,7 +36,10 @@ export default function Home() {
   const [reservationStats, setReservationStats] = useState({
     upcomingReservationsCount: 0,
     needsInspectionCount: 0,
+    upcomingCarNums: [] as string[],
+    needsInspectionCarNums: [] as string[],
   });
+  const [activeFilter, setActiveFilter] = useState<'all' | 'upcoming' | 'needsInspection'>('all');
   const observerTarget = useRef<HTMLDivElement>(null);
   const lastFetchTime = useRef<number>(0);
   const isFetching = useRef<boolean>(false);
@@ -178,12 +181,26 @@ export default function Home() {
         setReservationStats({
           upcomingReservationsCount: data.upcomingReservationsCount || 0,
           needsInspectionCount: data.needsInspectionCount || 0,
+          upcomingCarNums: data.upcomingCarNums || [],
+          needsInspectionCarNums: data.needsInspectionCarNums || [],
         });
       }
     } catch (error) {
       console.error('Error fetching reservation stats:', error);
     }
   };
+
+  // 필터된 차량 목록
+  const filteredVehicles = vehicles.filter(v => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'upcoming') {
+      return reservationStats.upcomingCarNums.includes(v.vehicleNumber);
+    }
+    if (activeFilter === 'needsInspection') {
+      return reservationStats.needsInspectionCarNums.includes(v.vehicleNumber);
+    }
+    return true;
+  });
 
   // 예약 통계도 함께 로드
   useEffect(() => {
@@ -263,7 +280,10 @@ export default function Home() {
         {/* 통계 카드 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8 animate-fade-in-up">
           {/* D+1 예약건수 */}
-          <div className="stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group">
+          <button
+            onClick={() => setActiveFilter(activeFilter === 'upcoming' ? 'all' : 'upcoming')}
+            className={`stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group text-left transition-all ${activeFilter === 'upcoming' ? 'ring-2 ring-orange-500 ring-offset-2' : ''}`}
+          >
             <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl" style={{ background: 'rgba(249, 115, 22, 0.2)' }}></div>
             <div className="relative">
               <div className="flex items-center gap-2 mb-2">
@@ -278,10 +298,13 @@ export default function Home() {
                 {reservationStats.upcomingReservationsCount}
               </p>
             </div>
-          </div>
+          </button>
 
           {/* 세차·점검 필요 */}
-          <div className="stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group">
+          <button
+            onClick={() => setActiveFilter(activeFilter === 'needsInspection' ? 'all' : 'needsInspection')}
+            className={`stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group text-left transition-all ${activeFilter === 'needsInspection' ? 'ring-2 ring-red-500 ring-offset-2' : ''}`}
+          >
             <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl" style={{ background: 'rgba(239, 68, 68, 0.2)' }}></div>
             <div className="relative">
               <div className="flex items-center gap-2 mb-2">
@@ -296,7 +319,7 @@ export default function Home() {
                 {reservationStats.needsInspectionCount}
               </p>
             </div>
-          </div>
+          </button>
 
           {/* 전체 차량 */}
           <div className="stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group">
@@ -356,9 +379,26 @@ export default function Home() {
           </div>
 
           <div className="p-4 md:p-6">
-            <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
-              차량 목록 ({stats.totalVehicles}대)
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base md:text-lg font-semibold text-gray-900">
+                차량 목록 {activeFilter !== 'all' ? `(${filteredVehicles.length}대)` : `(${stats.totalVehicles}대)`}
+              </h2>
+              {activeFilter !== 'all' && (
+                <button
+                  onClick={() => setActiveFilter('all')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+                  style={{
+                    background: activeFilter === 'upcoming' ? 'rgba(249, 115, 22, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    color: activeFilter === 'upcoming' ? '#EA580C' : '#DC2626'
+                  }}
+                >
+                  <span>{activeFilter === 'upcoming' ? 'D+1 예약' : '점검 필요'}</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
             {loading ? (
               <div className="space-y-3">
                 {/* 스켈레톤 로딩 */}
@@ -374,15 +414,15 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-            ) : vehicles.length === 0 ? (
+            ) : filteredVehicles.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                등록된 차량이 없습니다.
+                {activeFilter !== 'all' ? '해당 조건의 차량이 없습니다.' : '등록된 차량이 없습니다.'}
               </div>
             ) : (
               <>
                 {/* 모바일: 카드 형태 - 스크롤 컨테이너 */}
                 <div className="md:hidden space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-                  {vehicles.map((vehicle, index) => (
+                  {filteredVehicles.map((vehicle, index) => (
                     <Link
                       key={vehicle.id}
                       href={`/vehicles/${vehicle.id}`}
@@ -428,7 +468,7 @@ export default function Home() {
                   )}
 
                   {/* 모든 데이터 로드 완료 */}
-                  {!hasMore && vehicles.length > 0 && (
+                  {!hasMore && filteredVehicles.length > 0 && activeFilter === 'all' && (
                     <div className="text-center py-4 text-gray-400 text-sm">
                       모든 차량을 불러왔습니다
                     </div>
@@ -455,7 +495,7 @@ export default function Home() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {vehicles.map((vehicle) => (
+                      {filteredVehicles.map((vehicle) => (
                         <tr key={vehicle.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {vehicle.vehicleNumber}
@@ -494,7 +534,7 @@ export default function Home() {
                   )}
 
                   {/* 모든 데이터 로드 완료 */}
-                  {!hasMore && vehicles.length > 0 && (
+                  {!hasMore && filteredVehicles.length > 0 && activeFilter === 'all' && (
                     <div className="text-center py-4 text-gray-400 text-sm">
                       모든 차량을 불러왔습니다
                     </div>
