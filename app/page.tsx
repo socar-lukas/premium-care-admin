@@ -275,10 +275,6 @@ export default function Home() {
   // 필터 변경 시 해당 차량 조회
   useEffect(() => {
     const statusMap = reservationStats.vehicleStatusMap;
-    console.log('[Filter Debug] activeFilter:', activeFilter);
-    console.log('[Filter Debug] needsInspectionCarNums:', reservationStats.needsInspectionCarNums);
-    console.log('[Filter Debug] needsInspectionCount:', reservationStats.needsInspectionCount);
-
     if (activeFilter === 'inUse') {
       fetchFilteredVehicles(reservationStats.inUseCarNums, statusMap);
     } else if (activeFilter === 'upcoming') {
@@ -290,31 +286,49 @@ export default function Home() {
     }
   }, [activeFilter, reservationStats]);
 
-  // 표시할 차량 목록 (필터 활성화 시 filteredVehicles, 아니면 vehicles)
-  // 정렬: 점검필요 먼저, 그 다음 차량번호 오름차순
-  const sortedVehicles = (list: Vehicle[]) => {
+  // 전체 목록용 차량 계산 (DB 차량 + 미등록 점검필요 차량)
+  const getAllVehiclesWithPlaceholders = () => {
     const statusMap = reservationStats.vehicleStatusMap;
+    const dbVehicleNumbers = new Set(vehicles.map(v => v.vehicleNumber));
 
-    // 디버그: 점검필요 차량 확인
-    const needsInspectionList = list.filter(v => statusMap[v.vehicleNumber]?.needsInspection);
-    if (needsInspectionList.length > 0) {
-      console.log('[Sort Debug] 점검필요 차량:', needsInspectionList.map(v => v.vehicleNumber));
+    // 중복 제거된 DB 차량
+    const uniqueDbVehicles: Vehicle[] = [];
+    const seenNumbers = new Set<string>();
+    for (const v of vehicles) {
+      if (!seenNumbers.has(v.vehicleNumber)) {
+        seenNumbers.add(v.vehicleNumber);
+        uniqueDbVehicles.push(v);
+      }
     }
 
-    return [...list].sort((a, b) => {
+    // 점검필요 차량 중 DB에 없는 차량 추가 (placeholder)
+    const placeholderVehicles: Vehicle[] = reservationStats.needsInspectionCarNums
+      .filter(num => !dbVehicleNumbers.has(num))
+      .map(num => ({
+        id: `placeholder-${num}`,
+        vehicleNumber: num,
+        ownerName: '',
+        model: statusMap[num]?.carName || null,
+        manufacturer: null,
+        inspections: [],
+      }));
+
+    // 합치기
+    const allVehicles = [...uniqueDbVehicles, ...placeholderVehicles];
+
+    // 정렬: 점검필요 먼저, 그 다음 차량번호 오름차순
+    return allVehicles.sort((a, b) => {
       const aNeedsInspection = statusMap[a.vehicleNumber]?.needsInspection || false;
       const bNeedsInspection = statusMap[b.vehicleNumber]?.needsInspection || false;
 
-      // 점검필요 차량 먼저
       if (aNeedsInspection && !bNeedsInspection) return -1;
       if (!aNeedsInspection && bNeedsInspection) return 1;
 
-      // 그 다음 차량번호 오름차순
       return a.vehicleNumber.localeCompare(b.vehicleNumber, 'ko');
     });
   };
 
-  const displayVehicles = activeFilter !== 'all' ? filteredVehicles : sortedVehicles(vehicles);
+  const displayVehicles = activeFilter !== 'all' ? filteredVehicles : getAllVehiclesWithPlaceholders();
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%)' }}>
