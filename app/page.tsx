@@ -34,12 +34,15 @@ export default function Home() {
     recentInspections: 0,
   });
   const [reservationStats, setReservationStats] = useState({
+    inUseCount: 0,
     upcomingReservationsCount: 0,
     needsInspectionCount: 0,
+    inUseCarNums: [] as string[],
     upcomingCarNums: [] as string[],
     needsInspectionCarNums: [] as string[],
+    vehicleStatusMap: {} as Record<string, { status: '운행중' | '대기중'; needsInspection: boolean }>,
   });
-  const [activeFilter, setActiveFilter] = useState<'all' | 'upcoming' | 'needsInspection'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'inUse' | 'upcoming' | 'needsInspection'>('all');
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [loadingFiltered, setLoadingFiltered] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -181,10 +184,13 @@ export default function Home() {
       if (res.ok) {
         const data = await res.json();
         setReservationStats({
+          inUseCount: data.inUseCount || 0,
           upcomingReservationsCount: data.upcomingReservationsCount || 0,
           needsInspectionCount: data.needsInspectionCount || 0,
+          inUseCarNums: data.inUseCarNums || [],
           upcomingCarNums: data.upcomingCarNums || [],
           needsInspectionCarNums: data.needsInspectionCarNums || [],
+          vehicleStatusMap: data.vehicleStatusMap || {},
         });
       }
     } catch (error) {
@@ -218,14 +224,16 @@ export default function Home() {
 
   // 필터 변경 시 해당 차량 조회
   useEffect(() => {
-    if (activeFilter === 'upcoming') {
+    if (activeFilter === 'inUse') {
+      fetchFilteredVehicles(reservationStats.inUseCarNums);
+    } else if (activeFilter === 'upcoming') {
       fetchFilteredVehicles(reservationStats.upcomingCarNums);
     } else if (activeFilter === 'needsInspection') {
       fetchFilteredVehicles(reservationStats.needsInspectionCarNums);
     } else {
       setFilteredVehicles([]);
     }
-  }, [activeFilter, reservationStats.upcomingCarNums, reservationStats.needsInspectionCarNums]);
+  }, [activeFilter, reservationStats.inUseCarNums, reservationStats.upcomingCarNums, reservationStats.needsInspectionCarNums]);
 
   // 표시할 차량 목록 (필터 활성화 시 filteredVehicles, 아니면 vehicles)
   const displayVehicles = activeFilter !== 'all' ? filteredVehicles : vehicles;
@@ -307,7 +315,47 @@ export default function Home() {
       <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 md:py-8">
         {/* 통계 카드 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8 animate-fade-in-up">
-          {/* D+1 예약건수 */}
+          {/* 1. 전체 차량 */}
+          <div className="stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl" style={{ background: 'rgba(102, 176, 255, 0.25)' }}></div>
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
+                  <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-semibold text-gray-600">전체 차량</h3>
+              </div>
+              <p className="text-2xl md:text-3xl font-bold" style={{ color: '#0078FF' }}>
+                {loading && stats.totalVehicles === 0 ? <span className="inline-block w-10 h-7 bg-gray-200 rounded animate-pulse"></span> : stats.totalVehicles}
+              </p>
+            </div>
+          </div>
+
+          {/* 2. 현재 운행중 */}
+          <button
+            onClick={() => setActiveFilter(activeFilter === 'inUse' ? 'all' : 'inUse')}
+            className={`stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group text-left transition-all ${activeFilter === 'inUse' ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}
+          >
+            <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl" style={{ background: 'rgba(34, 197, 94, 0.2)' }}></div>
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)' }}>
+                  <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-semibold text-gray-600">운행중</h3>
+              </div>
+              <p className="text-2xl md:text-3xl font-bold" style={{ color: '#16A34A' }}>
+                {reservationStats.inUseCount}
+              </p>
+            </div>
+          </button>
+
+          {/* 3. D+1 예약 */}
           <button
             onClick={() => setActiveFilter(activeFilter === 'upcoming' ? 'all' : 'upcoming')}
             className={`stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group text-left transition-all ${activeFilter === 'upcoming' ? 'ring-2 ring-orange-500 ring-offset-2' : ''}`}
@@ -328,7 +376,7 @@ export default function Home() {
             </div>
           </button>
 
-          {/* 세차·점검 필요 */}
+          {/* 4. 점검 필요 */}
           <button
             onClick={() => setActiveFilter(activeFilter === 'needsInspection' ? 'all' : 'needsInspection')}
             className={`stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group text-left transition-all ${activeFilter === 'needsInspection' ? 'ring-2 ring-red-500 ring-offset-2' : ''}`}
@@ -348,43 +396,6 @@ export default function Home() {
               </p>
             </div>
           </button>
-
-          {/* 전체 차량 */}
-          <div className="stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl" style={{ background: 'rgba(102, 176, 255, 0.25)' }}></div>
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
-                  <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
-                  </svg>
-                </div>
-                <h3 className="text-xs font-semibold text-gray-600">전체 차량</h3>
-              </div>
-              <p className="text-2xl md:text-3xl font-bold" style={{ color: '#0078FF' }}>
-                {loading && stats.totalVehicles === 0 ? <span className="inline-block w-10 h-7 bg-gray-200 rounded animate-pulse"></span> : stats.totalVehicles}
-              </p>
-            </div>
-          </div>
-
-          {/* 오늘 점검 */}
-          <div className="stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl" style={{ background: 'rgba(34, 197, 94, 0.2)' }}></div>
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)' }}>
-                  <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                  </svg>
-                </div>
-                <h3 className="text-xs font-semibold text-gray-600">오늘 점검</h3>
-              </div>
-              <p className="text-2xl md:text-3xl font-bold" style={{ color: '#16A34A' }}>
-                {loading && stats.recentInspections === 0 ? <span className="inline-block w-8 h-7 bg-gray-200 rounded animate-pulse"></span> : stats.recentInspections}
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* 검색 및 최근 차량 */}
@@ -416,11 +427,11 @@ export default function Home() {
                   onClick={() => setActiveFilter('all')}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
                   style={{
-                    background: activeFilter === 'upcoming' ? 'rgba(249, 115, 22, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                    color: activeFilter === 'upcoming' ? '#EA580C' : '#DC2626'
+                    background: activeFilter === 'inUse' ? 'rgba(34, 197, 94, 0.1)' : activeFilter === 'upcoming' ? 'rgba(249, 115, 22, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    color: activeFilter === 'inUse' ? '#16A34A' : activeFilter === 'upcoming' ? '#EA580C' : '#DC2626'
                   }}
                 >
-                  <span>{activeFilter === 'upcoming' ? 'D+1 예약' : '점검 필요'}</span>
+                  <span>{activeFilter === 'inUse' ? '운행중' : activeFilter === 'upcoming' ? 'D+1 예약' : '점검 필요'}</span>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -450,14 +461,19 @@ export default function Home() {
               <>
                 {/* 모바일: 카드 형태 - 스크롤 컨테이너 */}
                 <div className={`md:hidden space-y-3 pr-1 ${activeFilter === 'all' ? 'max-h-[60vh] overflow-y-auto' : ''}`}>
-                  {displayVehicles.map((vehicle, index) => (
+                  {displayVehicles.map((vehicle, index) => {
+                    const vehicleStatus = reservationStats.vehicleStatusMap[vehicle.vehicleNumber];
+                    const isInUse = vehicleStatus?.status === '운행중';
+                    const needsInspection = vehicleStatus?.needsInspection;
+
+                    return (
                     <Link
                       key={vehicle.id}
                       href={`/vehicles/${vehicle.id}`}
                       className="block glass-card rounded-xl p-4 border border-white/30 active:scale-[0.98] transition-all duration-200"
                       style={{ animationDelay: `${index * 0.1}s` }}
                     >
-                      <div className="flex justify-between items-start mb-3">
+                      <div className="flex justify-between items-start mb-2">
                         <div className="flex-1">
                           <h3 className="font-bold text-gray-900 text-base mb-1">
                             {vehicle.vehicleNumber}
@@ -472,18 +488,26 @@ export default function Home() {
                           </svg>
                         </div>
                       </div>
-                      {vehicle.inspections[0] && (
-                        <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          최근 점검: {new Date(
-                            vehicle.inspections[0].inspectionDate
-                          ).toLocaleDateString('ko-KR')}
-                        </div>
-                      )}
+                      {/* 상태 태그 */}
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {vehicleStatus && (
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            isInUse
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {isInUse ? '운행중' : '대기중'}
+                          </span>
+                        )}
+                        {needsInspection && (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            점검필요
+                          </span>
+                        )}
+                      </div>
                     </Link>
-                  ))}
+                  );
+                  })}
 
                   {/* 무한 스크롤 트리거 (모바일) - 필터 비활성화일 때만 */}
                   {activeFilter === 'all' && <div ref={observerTarget} className="h-4" />}
@@ -508,37 +532,60 @@ export default function Home() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           차량번호
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           제조사/모델
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          최근 점검일
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          예약 상태
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          점검
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           작업
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {displayVehicles.map((vehicle) => (
+                      {displayVehicles.map((vehicle) => {
+                        const vehicleStatus = reservationStats.vehicleStatusMap[vehicle.vehicleNumber];
+                        const isInUse = vehicleStatus?.status === '운행중';
+                        const needsInspection = vehicleStatus?.needsInspection;
+
+                        return (
                         <tr key={vehicle.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {vehicle.vehicleNumber}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                             {vehicle.manufacturer} {vehicle.model}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {vehicle.inspections[0]
-                              ? new Date(
-                                  vehicle.inspections[0].inspectionDate
-                                ).toLocaleDateString('ko-KR')
-                              : '-'}
+                          <td className="px-4 py-4 whitespace-nowrap text-sm">
+                            {vehicleStatus ? (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                isInUse
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {isInUse ? '운행중' : '대기중'}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <td className="px-4 py-4 whitespace-nowrap text-sm">
+                            {needsInspection ? (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                점검필요
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                             <Link
                               href={`/vehicles/${vehicle.id}`}
                               className="text-blue-600 hover:text-blue-900"
@@ -547,7 +594,8 @@ export default function Home() {
                             </Link>
                           </td>
                         </tr>
-                      ))}
+                      );
+                      })}
                     </tbody>
                   </table>
 

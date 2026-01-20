@@ -101,76 +101,97 @@ export async function GET() {
     const now = new Date();
     const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-    // 1. D+1 예약건수: 현재 시간부터 24시간 내 start_at_kst가 있고 state가 "예약"인 건
+    // 1. 현재 운행중 차량: state가 "운행중" 이거나 현재 시간이 start~end 사이인 차량
+    const inUseVehicles = reservations.filter(r => {
+      // state가 "운행중"이면 운행중
+      if (r.state === '운행중') return true;
+      // 현재 시간이 start~end 사이이면 운행중
+      if (r.start_at_kst && r.end_at_kst) {
+        return now >= r.start_at_kst && now <= r.end_at_kst;
+      }
+      return false;
+    });
+    // 운행중 차량은 unique하게 count
+    const inUseCarNums = [...new Set(inUseVehicles.map(r => r.car_num))];
+
+    // 2. D+1 예약: 오늘 기준 +1일 안에 예약 시작하는 건 (중복 허용)
     const upcomingReservations = reservations.filter(r => {
-      if (!r.start_at_kst || r.state !== '예약') return false;
+      if (!r.start_at_kst) return false;
+      // state가 "예약"인 경우만 (이미 운행중이거나 완료된 건 제외)
+      if (r.state !== '예약') return false;
       return r.start_at_kst >= now && r.start_at_kst <= next24Hours;
     });
 
-    // 2. 실시간 세차·점검 필요 대수: end_at_kst가 현재시간 이전이고 state가 "완료"인 예약 중
-    //    완료 후 9시간 이내이고, 해당 차량에 점검 이력이 없는 차량 대수
-    const nineHoursAgo = new Date(now.getTime() - 9 * 60 * 60 * 1000);
-    const completedReservations = reservations.filter(r => {
-      if (!r.end_at_kst || r.state !== '완료') return false;
-      // 완료 시간이 현재보다 이전이고, 9시간 이내인 경우만
-      return r.end_at_kst < now && r.end_at_kst > nineHoursAgo;
-    });
+    // 3. D+1 점검 필요: D+1 예약 중 점검이력이 없는 예약 건수 (중복 허용)
+    // 먼저 D+1 예약의 차량번호들 수집
+    const upcomingCarNums = [...new Set(upcomingReservations.map(r => r.car_num))];
 
-    // 완료된 예약의 차량번호 목록 (중복 제거)
-    const completedCarNums = [...new Set(completedReservations.map(r => r.car_num))];
-
-    // 각 차량의 최근 점검 이력 확인
-    let needsInspectionCount = 0;
-    const needsInspectionCarNums: string[] = [];
-
-    if (completedCarNums.length > 0) {
-      // 차량번호로 차량 조회
-      const vehicles = await prisma.vehicle.findMany({
+    // 점검이력 조회
+    let vehiclesWithInspection: Set<string> = new Set();
+    if (upcomingCarNums.length > 0) {
+      const vehiclesWithInspectionData = await prisma.vehicle.findMany({
         where: {
-          vehicleNumber: { in: completedCarNums }
+          vehicleNumber: { in: upcomingCarNums },
+          inspections: { some: {} } // 점검이력이 있는 차량만
         },
-        select: {
-          vehicleNumber: true,
-          inspections: {
-            take: 1,
-            orderBy: { inspectionDate: 'desc' },
-            select: { inspectionDate: true }
-          }
-        }
+        select: { vehicleNumber: true }
       });
+      vehiclesWithInspection = new Set(vehiclesWithInspectionData.map(v => v.vehicleNumber));
+    }
 
-      const vehicleMap = new Map(vehicles.map(v => [v.vehicleNumber, v]));
+    // D+1 예약 중 점검이력 없는 예약 건수 (중복 허용)
+    const needsInspectionReservations = upcomingReservations.filter(r =>
+      !vehiclesWithInspection.has(r.car_num)
+    );
 
-      // 완료된 예약 중 점검이 필요한 차량 확인
-      for (const carNum of completedCarNums) {
-        const vehicle = vehicleMap.get(carNum);
+    // 차량별 예약 상태 정보 (차량 목록에서 사용)
+    // 각 차량의 현재 상태: 운행중 / 대기중
+    const vehicleStatusMap: Record<string, { status: '운행중' | '대기중'; needsInspection: boolean }> = {};
 
-        // 해당 차량의 완료된 예약 중 가장 최근 end_at_kst
-        const latestCompletion = completedReservations
-          .filter(r => r.car_num === carNum && r.end_at_kst)
-          .sort((a, b) => (b.end_at_kst?.getTime() || 0) - (a.end_at_kst?.getTime() || 0))[0];
+    // 모든 예약 데이터에서 차량별 상태 계산
+    for (const r of reservations) {
+      const isInUse = r.state === '운행중' ||
+        (r.start_at_kst && r.end_at_kst && now >= r.start_at_kst && now <= r.end_at_kst);
 
-        if (!latestCompletion?.end_at_kst) continue;
-
-        // 차량이 시스템에 없거나, 점검 이력이 없거나, 점검 날짜가 예약 완료 시간 이전인 경우
-        if (!vehicle ||
-            vehicle.inspections.length === 0 ||
-            vehicle.inspections[0].inspectionDate < latestCompletion.end_at_kst) {
-          needsInspectionCount++;
-          needsInspectionCarNums.push(carNum);
-        }
+      // 운행중이면 무조건 운행중으로 설정 (우선순위 높음)
+      if (isInUse) {
+        vehicleStatusMap[r.car_num] = {
+          ...vehicleStatusMap[r.car_num],
+          status: '운행중',
+          needsInspection: vehicleStatusMap[r.car_num]?.needsInspection || false
+        };
+      } else if (!vehicleStatusMap[r.car_num]) {
+        // 아직 상태가 없으면 대기중으로 설정
+        vehicleStatusMap[r.car_num] = {
+          status: '대기중',
+          needsInspection: false
+        };
       }
     }
 
-    // D+1 예약 차량번호 목록 (중복 제거)
-    const upcomingCarNums = [...new Set(upcomingReservations.map(r => r.car_num))];
+    // 점검 필요 여부 설정 (D+1 예약이 있고 점검이력이 없는 차량)
+    for (const r of needsInspectionReservations) {
+      if (vehicleStatusMap[r.car_num]) {
+        vehicleStatusMap[r.car_num].needsInspection = true;
+      } else {
+        vehicleStatusMap[r.car_num] = {
+          status: '대기중',
+          needsInspection: true
+        };
+      }
+    }
 
     return NextResponse.json({
+      // 통계 카운트
+      inUseCount: inUseCarNums.length,
       upcomingReservationsCount: upcomingReservations.length,
-      needsInspectionCount,
+      needsInspectionCount: needsInspectionReservations.length,
       // 필터링용 차량번호 목록
+      inUseCarNums,
       upcomingCarNums,
-      needsInspectionCarNums,
+      needsInspectionCarNums: [...new Set(needsInspectionReservations.map(r => r.car_num))],
+      // 차량별 상태 정보 (차량 목록 표시용)
+      vehicleStatusMap,
     });
   } catch (error) {
     console.error('Error fetching reservation stats:', error);
