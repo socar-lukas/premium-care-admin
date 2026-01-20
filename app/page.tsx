@@ -449,7 +449,7 @@ export default function Home() {
             ) : (
               <>
                 {/* 모바일: 카드 형태 - 스크롤 컨테이너 */}
-                <div className="md:hidden space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                <div className={`md:hidden space-y-3 pr-1 ${activeFilter === 'all' ? 'max-h-[60vh] overflow-y-auto' : ''}`}>
                   {displayVehicles.map((vehicle, index) => (
                     <Link
                       key={vehicle.id}
@@ -504,7 +504,7 @@ export default function Home() {
                 </div>
 
                 {/* 데스크톱: 테이블 형태 - 스크롤 컨테이너 */}
-                <div className="hidden md:block max-h-[60vh] overflow-y-auto">
+                <div className={`hidden md:block ${activeFilter === 'all' ? 'max-h-[60vh] overflow-y-auto' : ''}`}>
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
