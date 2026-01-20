@@ -191,15 +191,18 @@ export async function GET() {
       }
     }
 
+    // 점검필요 차량번호 (유니크)
+    const needsInspectionCarNums = [...new Set(needsInspectionReservations.map(r => r.car_num))];
+
     return NextResponse.json({
-      // 통계 카운트
+      // 통계 카운트 (모두 유니크한 차량 수)
       inUseCount: inUseCarNums.length,
-      upcomingReservationsCount: upcomingReservations.length,
-      needsInspectionCount: needsInspectionReservations.length,
+      upcomingReservationsCount: upcomingCarNums.length, // 예약 차량 수 (유니크)
+      needsInspectionCount: needsInspectionCarNums.length, // 점검필요 차량 수 (유니크)
       // 필터링용 차량번호 목록
       inUseCarNums,
       upcomingCarNums,
-      needsInspectionCarNums: [...new Set(needsInspectionReservations.map(r => r.car_num))],
+      needsInspectionCarNums,
       // 차량별 상태 정보 (차량 목록 표시용)
       vehicleStatusMap,
     });

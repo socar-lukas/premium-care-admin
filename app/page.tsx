@@ -275,6 +275,10 @@ export default function Home() {
   // 필터 변경 시 해당 차량 조회
   useEffect(() => {
     const statusMap = reservationStats.vehicleStatusMap;
+    console.log('[Filter Debug] activeFilter:', activeFilter);
+    console.log('[Filter Debug] needsInspectionCarNums:', reservationStats.needsInspectionCarNums);
+    console.log('[Filter Debug] needsInspectionCount:', reservationStats.needsInspectionCount);
+
     if (activeFilter === 'inUse') {
       fetchFilteredVehicles(reservationStats.inUseCarNums, statusMap);
     } else if (activeFilter === 'upcoming') {
@@ -290,6 +294,13 @@ export default function Home() {
   // 정렬: 점검필요 먼저, 그 다음 차량번호 오름차순
   const sortedVehicles = (list: Vehicle[]) => {
     const statusMap = reservationStats.vehicleStatusMap;
+
+    // 디버그: 점검필요 차량 확인
+    const needsInspectionList = list.filter(v => statusMap[v.vehicleNumber]?.needsInspection);
+    if (needsInspectionList.length > 0) {
+      console.log('[Sort Debug] 점검필요 차량:', needsInspectionList.map(v => v.vehicleNumber));
+    }
+
     return [...list].sort((a, b) => {
       const aNeedsInspection = statusMap[a.vehicleNumber]?.needsInspection || false;
       const bNeedsInspection = statusMap[b.vehicleNumber]?.needsInspection || false;
