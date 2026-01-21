@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 
 interface BulkUploadResult {
@@ -15,7 +15,18 @@ interface BulkUploadProps {
   onClose: () => void;
 }
 
-type UploadStatus = 'idle' | 'analyzing' | 'uploading' | 'processing' | 'complete' | 'error';
+interface VehicleRow {
+  rowNum: number;
+  car_num: string;
+  car_name?: string;
+  car_model?: string;
+  maker?: string;
+  engine?: string;
+  model_year?: string | number;
+  fuel?: string;
+}
+
+type UploadStatus = 'idle' | 'analyzing' | 'uploading' | 'complete' | 'error';
 
 export default function BulkUpload({ onComplete, onClose }: BulkUploadProps) {
   const [file, setFile] = useState<File | null>(null);
@@ -26,22 +37,10 @@ export default function BulkUpload({ onComplete, onClose }: BulkUploadProps) {
   const [totalRows, setTotalRows] = useState(0);
   const [processedCount, setProcessedCount] = useState(0);
   const [statusMessage, setStatusMessage] = useState('');
+  const [parsedRows, setParsedRows] = useState<VehicleRow[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 진행 상황 시뮬레이션
-  useEffect(() => {
-    if (status === 'processing' && totalRows > 0) {
-      const interval = setInterval(() => {
-        setProcessedCount((prev) => {
-          const next = prev + Math.ceil(totalRows / 20);
-          return next >= totalRows ? totalRows : next;
-        });
-      }, 200);
-      return () => clearInterval(interval);
-    }
-  }, [status, totalRows]);
-
-  const analyzeFile = async (selectedFile: File): Promise<number> => {
+  const analyzeFile = async (selectedFile: File): Promise<VehicleRow[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -50,8 +49,26 @@ export default function BulkUpload({ onComplete, onClose }: BulkUploadProps) {
           const workbook = XLSX.read(data, { type: 'array' });
           const sheetName = workbook.SheetNames[0];
           const sheet = workbook.Sheets[sheetName];
-          const rows = XLSX.utils.sheet_to_json(sheet);
-          resolve(rows.length);
+          const rows = XLSX.utils.sheet_to_json(sheet) as Record<string, unknown>[];
+
+          // 필수 컬럼 확인
+          if (rows.length > 0 && !('car_num' in rows[0])) {
+            reject(new Error(`필수 컬럼 'car_num'이 없습니다. 발견된 컬럼: ${Object.keys(rows[0]).join(', ')}`));
+            return;
+          }
+
+          const vehicleRows: VehicleRow[] = rows.map((row, index) => ({
+            rowNum: index + 2, // 헤더 + 1-based
+            car_num: String(row.car_num || '').trim(),
+            car_name: row.car_name ? String(row.car_name).trim() : undefined,
+            car_model: row.car_model ? String(row.car_model).trim() : undefined,
+            maker: row.maker ? String(row.maker).trim() : undefined,
+            engine: row.engine ? String(row.engine).trim() : undefined,
+            model_year: row.model_year,
+            fuel: row.fuel ? String(row.fuel).trim() : undefined,
+          })).filter(row => row.car_num); // 차량번호가 있는 행만
+
+          resolve(vehicleRows);
         } catch (err) {
           reject(err);
         }
@@ -75,12 +92,13 @@ export default function BulkUpload({ onComplete, onClose }: BulkUploadProps) {
     setStatusMessage('파일 분석 중...');
 
     try {
-      const rowCount = await analyzeFile(selectedFile);
-      setTotalRows(rowCount);
+      const rows = await analyzeFile(selectedFile);
+      setParsedRows(rows);
+      setTotalRows(rows.length);
       setStatus('idle');
-      setStatusMessage(`${rowCount}개 차량 데이터 확인됨`);
+      setStatusMessage(`${rows.length}개 차량 데이터 확인됨`);
     } catch (err) {
-      setError('파일 분석에 실패했습니다.');
+      setError(err instanceof Error ? err.message : '파일 분석에 실패했습니다.');
       setStatus('error');
       setFile(null);
     }
@@ -105,57 +123,104 @@ export default function BulkUpload({ onComplete, onClose }: BulkUploadProps) {
     setDragOver(false);
   };
 
-  const handleUpload = async () => {
-    if (!file) return;
-
-    setStatus('uploading');
-    setStatusMessage('서버로 전송 중...');
-    setProcessedCount(0);
-    setError(null);
-
+  // 개별 차량 등록/업데이트 API 호출
+  const upsertVehicle = async (row: VehicleRow, adminPin: string): Promise<{ success: boolean; updated: boolean; error?: string }> => {
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      // 연식 파싱
+      let year: number | null = null;
+      if (row.model_year) {
+        const yearStr = String(row.model_year).trim();
+        const yearMatch = yearStr.match(/^(\d{2,4})/);
+        if (yearMatch) {
+          let yearNum = parseInt(yearMatch[1]);
+          if (yearNum < 100) yearNum = 2000 + yearNum;
+          if (yearNum >= 1900 && yearNum <= 2100) year = yearNum;
+        }
+      }
 
-      const adminPin = sessionStorage.getItem('adminPin') || '';
-
-      setStatus('processing');
-      setStatusMessage('차량 데이터 처리 중...');
-
-      const response = await fetch('/api/vehicles/bulk', {
+      const response = await fetch('/api/vehicles/upsert', {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'x-admin-pin': adminPin,
         },
-        body: formData,
+        body: JSON.stringify({
+          vehicleNumber: row.car_num,
+          ownerName: row.car_name || row.car_num,
+          model: row.car_name || null,
+          manufacturer: row.maker || null,
+          vehicleType: row.car_model || null,
+          year,
+          engine: row.engine || null,
+          fuel: row.fuel || null,
+        }),
       });
 
-      // 응답이 JSON인지 확인
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        throw new Error(text || '서버 오류가 발생했습니다.');
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        return { success: false, updated: false, error: data.error || `HTTP ${response.status}` };
       }
 
       const data = await response.json();
-
-      if (!response.ok) {
-        const errorMsg = data.error || '업로드에 실패했습니다.';
-        const hint = data.hint ? `\n\n힌트: ${data.hint}` : '';
-        throw new Error(errorMsg + hint);
-      }
-
-      setProcessedCount(totalRows);
-      setResult(data.result);
-      setStatus('complete');
-      setStatusMessage('완료!');
-
-      if (onComplete) {
-        onComplete();
-      }
+      return { success: true, updated: data.updated || false };
     } catch (err) {
-      setError(err instanceof Error ? err.message : '업로드 중 오류가 발생했습니다.');
-      setStatus('error');
+      return { success: false, updated: false, error: err instanceof Error ? err.message : '알 수 없는 오류' };
+    }
+  };
+
+  const handleUpload = async () => {
+    if (parsedRows.length === 0) return;
+
+    setStatus('uploading');
+    setStatusMessage('차량 등록 중...');
+    setProcessedCount(0);
+    setError(null);
+
+    const adminPin = sessionStorage.getItem('adminPin') || '';
+    const uploadResult: BulkUploadResult = {
+      success: 0,
+      updated: 0,
+      failed: 0,
+      errors: [],
+    };
+
+    // 3개씩 병렬 처리
+    const BATCH_SIZE = 3;
+    for (let i = 0; i < parsedRows.length; i += BATCH_SIZE) {
+      const batch = parsedRows.slice(i, i + BATCH_SIZE);
+
+      const results = await Promise.all(
+        batch.map(row => upsertVehicle(row, adminPin))
+      );
+
+      results.forEach((res, idx) => {
+        const row = batch[idx];
+        if (res.success) {
+          if (res.updated) {
+            uploadResult.updated++;
+          } else {
+            uploadResult.success++;
+          }
+        } else {
+          uploadResult.failed++;
+          uploadResult.errors.push({
+            row: row.rowNum,
+            vehicleNumber: row.car_num,
+            error: res.error || '알 수 없는 오류',
+          });
+        }
+      });
+
+      setProcessedCount(Math.min(i + BATCH_SIZE, parsedRows.length));
+      setStatusMessage(`차량 등록 중... (${Math.min(i + BATCH_SIZE, parsedRows.length)}/${parsedRows.length})`);
+    }
+
+    setResult(uploadResult);
+    setStatus('complete');
+    setStatusMessage('완료!');
+
+    if (onComplete) {
+      onComplete();
     }
   };
 
@@ -167,6 +232,7 @@ export default function BulkUpload({ onComplete, onClose }: BulkUploadProps) {
     setTotalRows(0);
     setProcessedCount(0);
     setStatusMessage('');
+    setParsedRows([]);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -182,7 +248,7 @@ export default function BulkUpload({ onComplete, onClose }: BulkUploadProps) {
             <h2 className="text-xl font-bold text-gray-900">차량 일괄 등록</h2>
             <button
               onClick={onClose}
-              disabled={status === 'uploading' || status === 'processing'}
+              disabled={status === 'uploading'}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -194,7 +260,7 @@ export default function BulkUpload({ onComplete, onClose }: BulkUploadProps) {
 
         <div className="p-6">
           {/* 진행 중 화면 */}
-          {(status === 'uploading' || status === 'processing') && (
+          {status === 'uploading' && (
             <div className="py-8">
               <div className="flex flex-col items-center">
                 {/* 애니메이션 아이콘 */}
@@ -231,7 +297,7 @@ export default function BulkUpload({ onComplete, onClose }: BulkUploadProps) {
                 {/* 상태 메시지 */}
                 <p className="text-lg font-medium text-gray-900 mb-2">{statusMessage}</p>
                 <p className="text-sm text-gray-500">
-                  {processedCount} / {totalRows} 건 처리 중
+                  {processedCount} / {totalRows} 건 처리됨
                 </p>
 
                 {/* 프로그레스 바 */}
