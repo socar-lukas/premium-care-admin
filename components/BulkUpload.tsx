@@ -64,7 +64,7 @@ export default function BulkUpload({ onComplete, onClose }: BulkUploadProps) {
             car_model: row.car_model ? String(row.car_model).trim() : undefined,
             maker: row.maker ? String(row.maker).trim() : undefined,
             engine: row.engine ? String(row.engine).trim() : undefined,
-            model_year: row.model_year,
+            model_year: row.model_year != null ? (typeof row.model_year === 'number' ? row.model_year : String(row.model_year)) : undefined,
             fuel: row.fuel ? String(row.fuel).trim() : undefined,
           })).filter(row => row.car_num); // 차량번호가 있는 행만
 
