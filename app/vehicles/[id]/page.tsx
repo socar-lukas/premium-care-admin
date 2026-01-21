@@ -78,6 +78,7 @@ export default function VehicleDetailPage({
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deletingVehicle, setDeletingVehicle] = useState(false);
   const [showAllInspections, setShowAllInspections] = useState(false);
   const [showAllMaintenance, setShowAllMaintenance] = useState(false);
 
@@ -111,6 +112,36 @@ export default function VehicleDetailPage({
       alert('삭제에 실패했습니다.');
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const handleDeleteVehicle = async () => {
+    if (!confirm('정말 이 차량을 삭제하시겠습니까?\n\n관련된 모든 점검 기록과 사진도 함께 삭제됩니다.')) {
+      return;
+    }
+
+    setDeletingVehicle(true);
+    try {
+      const adminPin = sessionStorage.getItem('adminPin');
+      const res = await fetch(`/api/vehicles/${params.id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-admin-pin': adminPin || '',
+        },
+      });
+
+      if (res.ok) {
+        alert('차량이 삭제되었습니다.');
+        router.push('/');
+      } else {
+        const error = await res.json();
+        alert(error.error || '삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Error deleting vehicle:', error);
+      alert('삭제에 실패했습니다.');
+    } finally {
+      setDeletingVehicle(false);
     }
   };
 
@@ -233,7 +264,18 @@ export default function VehicleDetailPage({
 
         {/* 차량 정보 */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">차량 정보</h1>
+          <div className="flex justify-between items-start mb-4">
+            <h1 className="text-2xl font-bold text-gray-900">차량 정보</h1>
+            {isAdmin && (
+              <button
+                onClick={handleDeleteVehicle}
+                disabled={deletingVehicle}
+                className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-all disabled:opacity-50"
+              >
+                {deletingVehicle ? '삭제 중...' : '차량 삭제'}
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <span className="text-sm text-gray-500">차량번호</span>
