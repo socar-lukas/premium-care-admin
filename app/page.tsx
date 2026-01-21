@@ -82,16 +82,16 @@ export default function Home() {
     setVehicles([]);
     setHasMore(true);
 
-    // 차량 목록과 예약 통계를 병렬로 로드 (빠른 로딩)
-    fetchVehicles(1, true, []);
+    // 통계 먼저 로드
     fetchStats();
 
-    // 예약 통계는 별도로 로드 (정렬은 클라이언트에서 처리)
+    // 예약 통계를 먼저 로드하여 점검필요 차량 목록 확보
+    let priorityNums: string[] = [];
     try {
       const res = await fetch('/api/reservations/stats');
       if (res.ok) {
         const data = await safeJsonParse(res, {});
-        const priorityNums = data.needsInspectionCarNums || [];
+        priorityNums = data.needsInspectionCarNums || [];
         needsInspectionCarNumsRef.current = priorityNums;
         setReservationStats({
           inUseCount: data.inUseCount || 0,
@@ -108,6 +108,9 @@ export default function Home() {
     } finally {
       setStatsLoaded(true);
     }
+
+    // 점검필요 차량을 우선순위로 차량 목록 로드
+    fetchVehicles(1, true, priorityNums);
   }, []);
 
   // 초기 로드
