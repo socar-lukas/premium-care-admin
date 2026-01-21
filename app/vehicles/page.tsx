@@ -33,6 +33,7 @@ export default function VehiclesPage() {
 
   useEffect(() => {
     fetchVehicles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, page]);
 
   const fetchVehicles = async () => {

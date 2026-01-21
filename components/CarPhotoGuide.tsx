@@ -191,6 +191,7 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange }: MultiPho
         {photoCount > 0 ? (
           <div className="w-full h-full relative">
             {/* 첫 번째 사진 미리보기 */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={previewUrls[0]}
               alt={guide.label}

@@ -147,6 +147,7 @@ export default function VehicleDetailPage({
 
   useEffect(() => {
     fetchVehicle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
   const fetchVehicle = async () => {
@@ -458,6 +459,7 @@ export default function VehicleDetailPage({
 
                                       if (imageUrl) {
                                         return (
+                                          // eslint-disable-next-line @next/next/no-img-element
                                           <img
                                             src={imageUrl}
                                             alt={photo.originalFileName}
@@ -657,6 +659,7 @@ export default function VehicleDetailPage({
 
                                       if (imageUrl) {
                                         return (
+                                          // eslint-disable-next-line @next/next/no-img-element
                                           <img
                                             src={imageUrl}
                                             alt={photo.originalFileName}
