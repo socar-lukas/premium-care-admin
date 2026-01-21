@@ -156,15 +156,26 @@ export default function BulkUpload({ onComplete, onClose }: BulkUploadProps) {
         }),
       });
 
+      // 응답 텍스트 먼저 가져오기
+      const responseText = await response.text();
+
+      // JSON 파싱 시도
+      let data;
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        console.error('JSON parse error for vehicle:', row.car_num, responseText.substring(0, 100));
+        return { success: false, updated: false, error: `서버 오류: ${response.status}` };
+      }
+
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
         return { success: false, updated: false, error: data.error || `HTTP ${response.status}` };
       }
 
-      const data = await response.json();
       return { success: true, updated: data.updated || false };
     } catch (err) {
-      return { success: false, updated: false, error: err instanceof Error ? err.message : '알 수 없는 오류' };
+      console.error('Network error for vehicle:', row.car_num, err);
+      return { success: false, updated: false, error: err instanceof Error ? err.message : '네트워크 오류' };
     }
   };
 

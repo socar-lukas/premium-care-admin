@@ -19,15 +19,23 @@ interface VehicleData {
 
 // POST /api/vehicles/upsert - 단일 차량 등록/업데이트
 export async function POST(request: NextRequest) {
-  if (!verifyAdminPin(request)) {
-    return NextResponse.json(
-      { error: '관리자 권한이 필요합니다.' },
-      { status: 403 }
-    );
-  }
-
   try {
-    const body: VehicleData = await request.json();
+    if (!verifyAdminPin(request)) {
+      return NextResponse.json(
+        { error: '관리자 권한이 필요합니다.' },
+        { status: 403 }
+      );
+    }
+
+    let body: VehicleData;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: '잘못된 요청 형식입니다.' },
+        { status: 400 }
+      );
+    }
 
     if (!body.vehicleNumber || !body.vehicleNumber.trim()) {
       return NextResponse.json(
