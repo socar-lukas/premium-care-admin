@@ -98,115 +98,117 @@ export async function POST(request: NextRequest) {
       errors: [],
     };
 
-    // 각 행 처리
+    // 데이터 준비 (모든 행을 미리 파싱)
+    const vehicleDataList: Array<{
+      rowNum: number;
+      vehicleNumber: string;
+      data: {
+        vehicleNumber: string;
+        ownerName: string;
+        model: string | null;
+        manufacturer: string | null;
+        vehicleType: string | null;
+        year: number | null;
+        engine: string | null;
+        fuel: string | null;
+      };
+    }> = [];
+
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      const rowNum = i + 2; // 헤더 행 + 1-based index
+      const rowNum = i + 2;
 
-      try {
-        // 차량번호 확인
-        const vehicleNumber = row.car_num?.toString().trim();
-        if (!vehicleNumber) {
-          result.failed++;
-          result.errors.push({
-            row: rowNum,
-            vehicleNumber: '(없음)',
-            error: '차량번호(car_num)가 비어있습니다.',
-          });
-          continue;
+      const vehicleNumber = row.car_num?.toString().trim();
+      if (!vehicleNumber) {
+        result.failed++;
+        result.errors.push({
+          row: rowNum,
+          vehicleNumber: '(없음)',
+          error: '차량번호(car_num)가 비어있습니다.',
+        });
+        continue;
+      }
+
+      // 연식 파싱
+      let parsedYear: number | null = null;
+      if (row.model_year) {
+        const yearStr = row.model_year.toString().trim();
+        const yearMatch = yearStr.match(/^(\d{2,4})/);
+        if (yearMatch) {
+          let yearNum = parseInt(yearMatch[1]);
+          if (yearNum < 100) yearNum = 2000 + yearNum;
+          if (yearNum >= 1900 && yearNum <= 2100) parsedYear = yearNum;
         }
+      }
 
-        // 데이터 매핑
-        // - 차량번호 = car_num
-        // - 제조사 = maker
-        // - 모델명 = car_name
-        // - 차량 유형 = car_model
-        // - 엔진 = engine
-        // - 연식 = model_year
-        // - 연료 = fuel
-        // 연식 파싱 (26MY, 2026, 26 등 다양한 형식 지원)
-        let parsedYear: number | null = null;
-        if (row.model_year) {
-          const yearStr = row.model_year.toString().trim();
-          // "26MY" -> "26", "2026" -> "2026" 등에서 숫자만 추출
-          const yearMatch = yearStr.match(/^(\d{2,4})/);
-          if (yearMatch) {
-            let yearNum = parseInt(yearMatch[1]);
-            // 2자리 연도인 경우 2000년대로 변환 (예: 26 -> 2026)
-            if (yearNum < 100) {
-              yearNum = 2000 + yearNum;
-            }
-            // 유효한 연도 범위 체크
-            if (yearNum >= 1900 && yearNum <= 2100) {
-              parsedYear = yearNum;
-            }
-          }
-        }
-
-        const vehicleData = {
+      vehicleDataList.push({
+        rowNum,
+        vehicleNumber,
+        data: {
           vehicleNumber,
-          ownerName: row.car_name?.toString().trim() || vehicleNumber, // 소유자명이 없으면 차량번호로 대체
+          ownerName: row.car_name?.toString().trim() || vehicleNumber,
           model: row.car_name?.toString().trim() || null,
           manufacturer: row.maker?.toString().trim() || null,
           vehicleType: row.car_model?.toString().trim() || null,
           year: parsedYear,
           engine: row.engine?.toString().trim() || null,
           fuel: row.fuel?.toString().trim() || null,
-        };
+        },
+      });
+    }
 
-        // 기존 차량 확인
-        const existing = await prisma.vehicle.findUnique({
-          where: { vehicleNumber },
-        });
+    // 배치 처리 (5개씩)
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < vehicleDataList.length; i += BATCH_SIZE) {
+      const batch = vehicleDataList.slice(i, i + BATCH_SIZE);
 
-        if (existing) {
-          // 업데이트
-          await prisma.vehicle.update({
-            where: { vehicleNumber },
-            data: {
-              model: vehicleData.model,
-              manufacturer: vehicleData.manufacturer,
-              vehicleType: vehicleData.vehicleType,
-              year: vehicleData.year,
-              engine: vehicleData.engine,
-              fuel: vehicleData.fuel,
-            },
-          });
-          result.updated++;
-          console.log(`[Bulk] Updated vehicle: ${vehicleNumber}`);
-        } else {
-          // 새로 생성
-          await prisma.vehicle.create({
-            data: vehicleData,
-          });
-          result.success++;
-          console.log(`[Bulk] Created vehicle: ${vehicleNumber}`);
-        }
-      } catch (error) {
-        result.failed++;
-        let errorMessage = '알 수 없는 오류';
+      await Promise.all(
+        batch.map(async ({ rowNum, vehicleNumber, data }) => {
+          try {
+            // upsert 사용 (존재하면 업데이트, 없으면 생성)
+            const existing = await prisma.vehicle.findUnique({
+              where: { vehicleNumber },
+              select: { id: true },
+            });
 
-        if (error instanceof Error) {
-          errorMessage = error.message;
-
-          // Prisma 오류 처리
-          if ('code' in error) {
-            const prismaError = error as { code: string };
-            if (prismaError.code === 'P2002') {
-              errorMessage = '중복된 차량번호입니다.';
-            } else if (prismaError.code === 'P2022') {
-              errorMessage = '데이터베이스 스키마가 업데이트되지 않았습니다. npm run db:push를 실행하세요.';
+            if (existing) {
+              await prisma.vehicle.update({
+                where: { vehicleNumber },
+                data: {
+                  model: data.model,
+                  manufacturer: data.manufacturer,
+                  vehicleType: data.vehicleType,
+                  year: data.year,
+                  engine: data.engine,
+                  fuel: data.fuel,
+                },
+              });
+              result.updated++;
+            } else {
+              await prisma.vehicle.create({ data });
+              result.success++;
             }
-          }
-        }
+          } catch (error) {
+            result.failed++;
+            let errorMessage = '알 수 없는 오류';
 
-        result.errors.push({
-          row: rowNum,
-          vehicleNumber: row.car_num?.toString() || '(없음)',
-          error: errorMessage,
-        });
-        console.error(`[Bulk] Error at row ${rowNum}:`, error);
-      }
+            if (error instanceof Error) {
+              errorMessage = error.message;
+              if ('code' in error) {
+                const prismaError = error as { code: string };
+                if (prismaError.code === 'P2002') errorMessage = '중복된 차량번호입니다.';
+                else if (prismaError.code === 'P2022') errorMessage = '스키마 오류';
+              }
+            }
+
+            result.errors.push({
+              row: rowNum,
+              vehicleNumber,
+              error: errorMessage,
+            });
+          }
+        })
+      );
     }
 
     console.log(`[POST /api/vehicles/bulk] Result: ${result.success} created, ${result.updated} updated, ${result.failed} failed`);
