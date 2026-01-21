@@ -707,7 +707,7 @@ function InspectionForm() {
               <div className="pl-1">
                 <label className="block text-sm text-gray-600 mb-2">와이퍼/워셔액</label>
                 <div className="flex flex-wrap gap-1.5">
-                  {['정상', '와이퍼 불량', '워셔액 보충', '워셔액통 파손'].map((item) => (
+                  {['정상', '와이퍼 불량', '워셔액 부족', '워셔액통 파손'].map((item) => (
                     <button
                       key={item}
                       type="button"

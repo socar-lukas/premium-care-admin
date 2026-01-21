@@ -86,6 +86,22 @@ export default function VehicleDetailPage({
   const carWashInspections = inspections.filter(i => i.inspectionType !== '소모품·경정비');
   const maintenanceRecords = inspections.filter(i => i.inspectionType === '소모품·경정비');
 
+  // 당월 세차 통계 계산
+  const currentMonth = new Date();
+  const currentMonthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+  const monthlyCarWashStats = carWashInspections.reduce(
+    (acc, inspection) => {
+      const inspectionDate = new Date(inspection.completedAt || inspection.inspectionDate);
+      if (inspectionDate >= currentMonthStart) {
+        const carWashType = inspection.details?.carWash;
+        if (carWashType === '정밀세차') acc.detailed++;
+        else if (carWashType === '약식세차') acc.quick++;
+      }
+      return acc;
+    },
+    { detailed: 0, quick: 0 }
+  );
+
   const handleDeleteInspection = async (inspectionId: string) => {
     if (!confirm('정말 이 점검 기록을 삭제하시겠습니까?')) {
       return;
@@ -326,7 +342,12 @@ export default function VehicleDetailPage({
         {/* 세차·점검기록 목록 */}
         <div className="bg-white rounded-lg shadow mb-6">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">세차·점검 기록</h2>
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-xl font-bold text-gray-900">세차·점검 기록</h2>
+              <span className="text-sm text-gray-500">
+                (당월 정밀세차 {monthlyCarWashStats.detailed}회, 약식세차 {monthlyCarWashStats.quick}회 완료)
+              </span>
+            </div>
           </div>
           <div className="p-6">
             {carWashInspections.length === 0 ? (
