@@ -18,6 +18,28 @@ interface Vehicle {
   inspections: Array<{ inspectionDate: Date }>;
 }
 
+interface ReservationStatsResponse {
+  inUseCount?: number;
+  upcomingReservationsCount?: number;
+  needsInspectionCount?: number;
+  inUseCarNums?: string[];
+  upcomingCarNums?: string[];
+  needsInspectionCarNums?: string[];
+  vehicleStatusMap?: Record<string, { status: '운행중' | '대기중'; needsInspection: boolean; carName: string }>;
+}
+
+interface VehiclesResponse {
+  vehicles?: Vehicle[];
+  pagination?: {
+    total?: number;
+    totalPages?: number;
+  };
+}
+
+interface InspectionsResponse {
+  inspections?: Array<{ id: string }>;
+}
+
 // 안전한 JSON 파싱 헬퍼
 async function safeJsonParse<T>(response: Response, defaultValue: T): Promise<T> {
   try {
@@ -26,7 +48,7 @@ async function safeJsonParse<T>(response: Response, defaultValue: T): Promise<T>
       console.error('Response is not JSON:', await response.text());
       return defaultValue;
     }
-    return await response.json();
+    return await response.json() as T;
   } catch (error) {
     console.error('JSON parse error:', error);
     return defaultValue;
@@ -90,7 +112,7 @@ export default function Home() {
     try {
       const res = await fetch('/api/reservations/stats');
       if (res.ok) {
-        const data = await safeJsonParse(res, {});
+        const data = await safeJsonParse<ReservationStatsResponse>(res, {});
         priorityNums = data.needsInspectionCarNums || [];
         needsInspectionCarNumsRef.current = priorityNums;
         setReservationStats({
@@ -190,7 +212,7 @@ export default function Home() {
         console.error('Vehicle fetch failed:', res.status, res.statusText);
         return;
       }
-      const data = await safeJsonParse(res, { vehicles: [], pagination: { totalPages: 1 } });
+      const data = await safeJsonParse<VehiclesResponse>(res, { vehicles: [], pagination: { totalPages: 1 } });
       const newVehicles = data.vehicles || [];
       const totalPages = data.pagination?.totalPages || 1;
 
@@ -222,8 +244,8 @@ export default function Home() {
         fetch(`/api/inspections?startDate=${today.toISOString()}&endDate=${tomorrow.toISOString()}`),
       ]);
 
-      const vehiclesData = vehiclesRes.ok ? await safeJsonParse(vehiclesRes, {}) : {};
-      const inspectionsData = inspectionsRes.ok ? await safeJsonParse(inspectionsRes, {}) : {};
+      const vehiclesData = vehiclesRes.ok ? await safeJsonParse<VehiclesResponse>(vehiclesRes, {}) : {};
+      const inspectionsData = inspectionsRes.ok ? await safeJsonParse<InspectionsResponse>(inspectionsRes, {}) : {};
 
       setStats({
         totalVehicles: vehiclesData.pagination?.total || 0,
@@ -258,7 +280,7 @@ export default function Home() {
         setFilteredVehicles([]);
         return;
       }
-      const data = await safeJsonParse(res, { vehicles: [] });
+      const data = await safeJsonParse<VehiclesResponse>(res, { vehicles: [] });
       const dbVehicles: Vehicle[] = data.vehicles || [];
 
       // DB에 있는 차량번호 Set
