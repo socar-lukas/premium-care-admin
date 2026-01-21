@@ -18,6 +18,21 @@ interface Vehicle {
   inspections: Array<{ inspectionDate: Date }>;
 }
 
+// 안전한 JSON 파싱 헬퍼
+async function safeJsonParse<T>(response: Response, defaultValue: T): Promise<T> {
+  try {
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error('Response is not JSON:', await response.text());
+      return defaultValue;
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('JSON parse error:', error);
+    return defaultValue;
+  }
+}
+
 export default function Home() {
   const router = useRouter();
   const { isAdmin, logout } = useAuth();
@@ -75,7 +90,7 @@ export default function Home() {
     try {
       const res = await fetch('/api/reservations/stats');
       if (res.ok) {
-        const data = await res.json();
+        const data = await safeJsonParse(res, {});
         const priorityNums = data.needsInspectionCarNums || [];
         needsInspectionCarNumsRef.current = priorityNums;
         setReservationStats({
@@ -172,7 +187,7 @@ export default function Home() {
         console.error('Vehicle fetch failed:', res.status, res.statusText);
         return;
       }
-      const data = await res.json();
+      const data = await safeJsonParse(res, { vehicles: [], pagination: { totalPages: 1 } });
       const newVehicles = data.vehicles || [];
       const totalPages = data.pagination?.totalPages || 1;
 
@@ -204,8 +219,8 @@ export default function Home() {
         fetch(`/api/inspections?startDate=${today.toISOString()}&endDate=${tomorrow.toISOString()}`),
       ]);
 
-      const vehiclesData = vehiclesRes.ok ? await vehiclesRes.json() : {};
-      const inspectionsData = inspectionsRes.ok ? await inspectionsRes.json() : {};
+      const vehiclesData = vehiclesRes.ok ? await safeJsonParse(vehiclesRes, {}) : {};
+      const inspectionsData = inspectionsRes.ok ? await safeJsonParse(inspectionsRes, {}) : {};
 
       setStats({
         totalVehicles: vehiclesData.pagination?.total || 0,
@@ -240,7 +255,7 @@ export default function Home() {
         setFilteredVehicles([]);
         return;
       }
-      const data = await res.json();
+      const data = await safeJsonParse(res, { vehicles: [] });
       const dbVehicles: Vehicle[] = data.vehicles || [];
 
       // DB에 있는 차량번호 Set

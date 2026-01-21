@@ -130,6 +130,13 @@ export default function BulkUpload({ onComplete, onClose }: BulkUploadProps) {
         body: formData,
       });
 
+      // 응답이 JSON인지 확인
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(text || '서버 오류가 발생했습니다.');
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
