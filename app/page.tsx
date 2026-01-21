@@ -46,6 +46,8 @@ export default function Home() {
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [loadingFiltered, setLoadingFiltered] = useState(false);
   const [statsLoaded, setStatsLoaded] = useState(false);
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
   const lastFetchTime = useRef<number>(0);
   const isFetching = useRef<boolean>(false);
@@ -330,6 +332,77 @@ export default function Home() {
 
   const displayVehicles = activeFilter !== 'all' ? filteredVehicles : getAllVehiclesWithPlaceholders();
 
+  // 차량 선택 토글
+  const toggleVehicleSelection = (vehicleId: string) => {
+    setSelectedVehicleIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(vehicleId)) {
+        newSet.delete(vehicleId);
+      } else {
+        newSet.add(vehicleId);
+      }
+      return newSet;
+    });
+  };
+
+  // 전체 선택/해제
+  const toggleSelectAll = () => {
+    const selectableVehicles = displayVehicles.filter(v => !v.id.startsWith('placeholder-'));
+    if (selectedVehicleIds.size === selectableVehicles.length) {
+      setSelectedVehicleIds(new Set());
+    } else {
+      setSelectedVehicleIds(new Set(selectableVehicles.map(v => v.id)));
+    }
+  };
+
+  // 일괄 삭제 핸들러
+  const handleBulkDelete = async () => {
+    if (selectedVehicleIds.size === 0) {
+      alert('삭제할 차량을 선택해주세요.');
+      return;
+    }
+
+    if (!confirm(`선택한 ${selectedVehicleIds.size}대의 차량을 삭제하시겠습니까?\n\n관련된 모든 점검 기록과 사진도 함께 삭제됩니다.`)) {
+      return;
+    }
+
+    setBulkDeleting(true);
+    const adminPin = sessionStorage.getItem('adminPin');
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const vehicleId of selectedVehicleIds) {
+      try {
+        const res = await fetch(`/api/vehicles/${vehicleId}`, {
+          method: 'DELETE',
+          headers: {
+            'x-admin-pin': adminPin || '',
+          },
+        });
+
+        if (res.ok) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch {
+        failCount++;
+      }
+    }
+
+    setBulkDeleting(false);
+    setSelectedVehicleIds(new Set());
+
+    if (failCount === 0) {
+      alert(`${successCount}대의 차량이 삭제되었습니다.`);
+    } else {
+      alert(`${successCount}대 삭제 완료, ${failCount}대 삭제 실패`);
+    }
+
+    // 목록 새로고침
+    refreshData(true);
+  };
+
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%)' }}>
       <nav className="glass-card sticky top-0 z-30 border-b border-white/20">
@@ -506,24 +579,53 @@ export default function Home() {
 
           <div className="p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base md:text-lg font-semibold text-gray-900">
-                차량 목록 {activeFilter !== 'all' ? `(${displayVehicles.length}대)` : `(${stats.totalVehicles}대)`}
-              </h2>
-              {activeFilter !== 'all' && (
-                <button
-                  onClick={() => setActiveFilter('all')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
-                  style={{
-                    background: activeFilter === 'inUse' ? 'rgba(34, 197, 94, 0.1)' : activeFilter === 'upcoming' ? 'rgba(249, 115, 22, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                    color: activeFilter === 'inUse' ? '#16A34A' : activeFilter === 'upcoming' ? '#EA580C' : '#DC2626'
-                  }}
-                >
-                  <span>{activeFilter === 'inUse' ? '운행중' : activeFilter === 'upcoming' ? 'D+1 예약' : '점검 필요'}</span>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
+              <div className="flex items-center gap-3">
+                {isAdmin && (
+                  <input
+                    type="checkbox"
+                    checked={selectedVehicleIds.size > 0 && selectedVehicleIds.size === displayVehicles.filter(v => !v.id.startsWith('placeholder-')).length}
+                    onChange={toggleSelectAll}
+                    className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                  />
+                )}
+                <h2 className="text-base md:text-lg font-semibold text-gray-900">
+                  차량 목록 {activeFilter !== 'all' ? `(${displayVehicles.length}대)` : `(${stats.totalVehicles}대)`}
+                  {isAdmin && selectedVehicleIds.size > 0 && (
+                    <span className="ml-2 text-sm text-blue-600 font-normal">
+                      {selectedVehicleIds.size}대 선택됨
+                    </span>
+                  )}
+                </h2>
+              </div>
+              <div className="flex items-center gap-2">
+                {isAdmin && selectedVehicleIds.size > 0 && (
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={bulkDeleting}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    {bulkDeleting ? '삭제 중...' : '일괄 삭제'}
+                  </button>
+                )}
+                {activeFilter !== 'all' && (
+                  <button
+                    onClick={() => setActiveFilter('all')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+                    style={{
+                      background: activeFilter === 'inUse' ? 'rgba(34, 197, 94, 0.1)' : activeFilter === 'upcoming' ? 'rgba(249, 115, 22, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                      color: activeFilter === 'inUse' ? '#16A34A' : activeFilter === 'upcoming' ? '#EA580C' : '#DC2626'
+                    }}
+                  >
+                    <span>{activeFilter === 'inUse' ? '운행중' : activeFilter === 'upcoming' ? 'D+1 예약' : '점검 필요'}</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
             {(loading || loadingFiltered) ? (
               <div className="space-y-3">
@@ -553,63 +655,73 @@ export default function Home() {
                     const isInUse = vehicleStatus?.status === '운행중';
                     const needsInspection = vehicleStatus?.needsInspection;
                     const isPlaceholder = vehicle.id.startsWith('placeholder-');
-
-                    const CardWrapper = isPlaceholder ? 'div' : Link;
-                    const cardProps = isPlaceholder
-                      ? { className: "block glass-card rounded-xl p-4 border border-orange-200 bg-orange-50/50" }
-                      : { href: `/vehicles/${vehicle.id}`, className: "block glass-card rounded-xl p-4 border border-white/30 active:scale-[0.98] transition-all duration-200" };
+                    const isSelected = selectedVehicleIds.has(vehicle.id);
 
                     return (
-                    <CardWrapper
+                    <div
                       key={vehicle.id}
-                      {...cardProps as any}
+                      className={`flex items-start gap-3 glass-card rounded-xl p-4 border ${isPlaceholder ? 'border-orange-200 bg-orange-50/50' : isSelected ? 'border-blue-400 bg-blue-50/50' : 'border-white/30'}`}
                       style={{ animationDelay: `${index * 0.1}s` }}
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1">
-                          <h3 className="font-bold text-gray-900 text-base mb-1">
-                            {vehicle.vehicleNumber}
-                          </h3>
-                          <p className="text-sm text-gray-600 font-medium">
-                            {vehicle.model || '차량 정보 없음'}
-                          </p>
-                        </div>
-                        {isPlaceholder ? (
-                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-orange-100 text-orange-700">
-                            미등록
-                          </span>
-                        ) : (
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
-                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                      {/* 최근 점검일 */}
-                      {vehicle.inspections && vehicle.inspections[0] && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          점검: {new Date(vehicle.inspections[0].inspectionDate).toLocaleDateString('ko-KR')}
-                        </p>
+                      {isAdmin && !isPlaceholder && (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleVehicleSelection(vehicle.id)}
+                          className="w-5 h-5 mt-1 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer flex-shrink-0"
+                        />
                       )}
-                      {/* 상태 태그 */}
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {vehicleStatus && (
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            isInUse
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            {isInUse ? '운행중' : '대기중'}
-                          </span>
+                      <Link
+                        href={isPlaceholder ? '#' : `/vehicles/${vehicle.id}`}
+                        className={`flex-1 ${isPlaceholder ? 'pointer-events-none' : ''}`}
+                        onClick={isPlaceholder ? (e) => e.preventDefault() : undefined}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <h3 className="font-bold text-gray-900 text-base mb-1">
+                              {vehicle.vehicleNumber}
+                            </h3>
+                            <p className="text-sm text-gray-600 font-medium">
+                              {vehicle.model || '차량 정보 없음'}
+                            </p>
+                          </div>
+                          {isPlaceholder ? (
+                            <span className="px-2 py-1 rounded-lg text-xs font-medium bg-orange-100 text-orange-700">
+                              미등록
+                            </span>
+                          ) : (
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        {/* 최근 점검일 */}
+                        {vehicle.inspections && vehicle.inspections[0] && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            점검: {new Date(vehicle.inspections[0].inspectionDate).toLocaleDateString('ko-KR')}
+                          </p>
                         )}
-                        {needsInspection && (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                            점검필요
-                          </span>
-                        )}
-                      </div>
-                    </CardWrapper>
+                        {/* 상태 태그 */}
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {vehicleStatus && (
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              isInUse
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {isInUse ? '운행중' : '대기중'}
+                            </span>
+                          )}
+                          {needsInspection && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                              점검필요
+                            </span>
+                          )}
+                        </div>
+                      </Link>
+                    </div>
                   );
                   })}
 
@@ -636,6 +748,16 @@ export default function Home() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
+                        {isAdmin && (
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                            <input
+                              type="checkbox"
+                              checked={selectedVehicleIds.size > 0 && selectedVehicleIds.size === displayVehicles.filter(v => !v.id.startsWith('placeholder-')).length}
+                              onChange={toggleSelectAll}
+                              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                            />
+                          </th>
+                        )}
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           차량번호
                         </th>
@@ -662,9 +784,22 @@ export default function Home() {
                         const isInUse = vehicleStatus?.status === '운행중';
                         const needsInspection = vehicleStatus?.needsInspection;
                         const isPlaceholder = vehicle.id.startsWith('placeholder-');
+                        const isSelected = selectedVehicleIds.has(vehicle.id);
 
                         return (
-                        <tr key={vehicle.id} className={`hover:bg-gray-50 ${isPlaceholder ? 'bg-orange-50/50' : ''}`}>
+                        <tr key={vehicle.id} className={`hover:bg-gray-50 ${isPlaceholder ? 'bg-orange-50/50' : isSelected ? 'bg-blue-50' : ''}`}>
+                          {isAdmin && (
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              {!isPlaceholder && (
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => toggleVehicleSelection(vehicle.id)}
+                                  className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                                />
+                              )}
+                            </td>
+                          )}
                           <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {vehicle.vehicleNumber}
                           </td>
