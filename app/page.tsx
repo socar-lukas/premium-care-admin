@@ -168,6 +168,10 @@ export default function Home() {
       params.append('limit', '15');
 
       const res = await fetch(`/api/vehicles?${params}`);
+      if (!res.ok) {
+        console.error('Vehicle fetch failed:', res.status, res.statusText);
+        return;
+      }
       const data = await res.json();
       const newVehicles = data.vehicles || [];
       const totalPages = data.pagination?.totalPages || 1;
@@ -200,8 +204,8 @@ export default function Home() {
         fetch(`/api/inspections?startDate=${today.toISOString()}&endDate=${tomorrow.toISOString()}`),
       ]);
 
-      const vehiclesData = await vehiclesRes.json();
-      const inspectionsData = await inspectionsRes.json();
+      const vehiclesData = vehiclesRes.ok ? await vehiclesRes.json() : {};
+      const inspectionsData = inspectionsRes.ok ? await inspectionsRes.json() : {};
 
       setStats({
         totalVehicles: vehiclesData.pagination?.total || 0,
@@ -231,6 +235,11 @@ export default function Home() {
       params.append('limit', '100'); // 필터된 차량은 전체 조회
 
       const res = await fetch(`/api/vehicles?${params}`);
+      if (!res.ok) {
+        console.error('Filtered vehicles fetch failed:', res.status);
+        setFilteredVehicles([]);
+        return;
+      }
       const data = await res.json();
       const dbVehicles: Vehicle[] = data.vehicles || [];
 
