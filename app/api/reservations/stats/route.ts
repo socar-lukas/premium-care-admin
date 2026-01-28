@@ -11,7 +11,7 @@ interface Reservation {
   state: string;
 }
 
-// 한국어 날짜 파싱 (예: "2026. 1. 8 오전 7:10:00")
+// 한국어 날짜 파싱 (예: "2026. 1. 8 오전 7:10:00") - KST 기준
 function parseKoreanDate(dateStr: string): Date | null {
   if (!dateStr || dateStr.trim() === '') return null;
 
@@ -29,14 +29,10 @@ function parseKoreanDate(dateStr: string): Date | null {
       hours = 0;
     }
 
-    return new Date(
-      parseInt(year),
-      parseInt(month) - 1,
-      parseInt(day),
-      hours,
-      parseInt(minute),
-      parseInt(second)
-    );
+    // KST 시간을 UTC로 변환 (KST = UTC + 9)
+    // ISO 문자열로 만들어서 KST 오프셋 적용
+    const kstDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${minute}:${second}+09:00`;
+    return new Date(kstDateStr);
   } catch {
     return null;
   }
@@ -98,8 +94,13 @@ export async function GET() {
     const csv = await response.text();
     const reservations = parseCSV(csv);
 
+    // 현재 시간 (UTC 기준, parseKoreanDate도 UTC로 변환되므로 비교 가능)
     const now = new Date();
     const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    // 디버그 로그
+    console.log('Current time (UTC):', now.toISOString());
+    console.log('Next 24 hours (UTC):', next24Hours.toISOString());
 
     // 1. 현재 운행중 차량: state가 "운행중" 이거나 현재 시간이 start~end 사이인 차량
     const inUseVehicles = reservations.filter(r => {
