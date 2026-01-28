@@ -336,18 +336,27 @@ function InspectionForm() {
     );
   };
 
-  // 폼 유효성 검사 (모드에 따라 다름)
+  // 외관 사진 필수 체크 (전/후/좌/우 각각 1장 이상)
+  const hasAllExteriorPhotos = (photos: Record<'front' | 'rear' | 'left' | 'right', File[]>) => {
+    return photos.front.length > 0 && photos.rear.length > 0 && photos.left.length > 0 && photos.right.length > 0;
+  };
+
+  // 폼 유효성 검사 (모드에 따라 다름) - 사진 필수 포함
   const isFormValid = isReturnMode
     ? (selectedVehicle &&
        selectedInspector &&
        contamination &&
        exteriorDamage &&
        tires.frontLeft && tires.frontRight && tires.rearLeft && tires.rearRight &&
-       interiorContamination.length > 0)
+       interiorContamination.length > 0 &&
+       hasAllExteriorPhotos(beforeExteriorPhotos) &&
+       beforeInteriorPhotos.length > 0)
     : (selectedVehicle &&
        selectedInspector &&
        carWash &&
-       battery);
+       battery &&
+       hasAllExteriorPhotos(afterExteriorPhotos) &&
+       afterInteriorPhotos.length > 0);
 
   // 멀티 선택 토글
   const toggleMultiSelect = (value: string, current: string[], setter: (val: string[]) => void) => {
@@ -696,11 +705,13 @@ function InspectionForm() {
                   title="점검 전 외관 사진"
                   photos={beforeExteriorPhotos}
                   onPhotoChange={handleBeforeExteriorPhotoChange}
+                  required
                 />
                 <InteriorMultiPhotoSection
                   title="점검 전 내부 사진 (발매트, 컵홀더)"
                   photos={beforeInteriorPhotos}
                   onPhotosChange={setBeforeInteriorPhotos}
+                  required
                 />
               </>
             )}
@@ -791,11 +802,13 @@ function InspectionForm() {
                 title="점검 후 외관 사진"
                 photos={afterExteriorPhotos}
                 onPhotoChange={handleAfterExteriorPhotoChange}
+                required
               />
               <InteriorMultiPhotoSection
                 title="점검 후 내부 사진 (발매트, 컵홀더)"
                 photos={afterInteriorPhotos}
                 onPhotosChange={setAfterInteriorPhotos}
+                required
               />
             </div>
             )}

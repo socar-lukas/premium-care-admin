@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { compressImages } from '@/lib/image-compress';
 
 // 차량 촬영 가이드 타입 (4방향 + 내부)
@@ -133,31 +133,60 @@ interface MultiPhotoUploadCardProps {
   guide: PhotoGuideConfig;
   photos: File[];
   onPhotosChange: (files: File[]) => void;
+  required?: boolean;
 }
 
-export function MultiPhotoUploadCard({ guide, photos, onPhotosChange }: MultiPhotoUploadCardProps) {
+export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }: MultiPhotoUploadCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [compressing, setCompressing] = useState(false);
+  const processedFilesRef = useRef<Set<string>>(new Set());
+
+  // photos prop이 변경되면 preview URLs 동기화
+  useEffect(() => {
+    // 기존 URL 정리
+    previewUrls.forEach(url => URL.revokeObjectURL(url));
+
+    // photos에서 새 preview URLs 생성
+    const newUrls = photos.map(file => URL.createObjectURL(file));
+    setPreviewUrls(newUrls);
+
+    // cleanup
+    return () => {
+      newUrls.forEach(url => URL.revokeObjectURL(url));
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photos.length]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
+      // 중복 파일 필터링 (파일명+크기로 고유 식별)
+      const uniqueFiles = files.filter(file => {
+        const fileKey = `${file.name}-${file.size}-${file.lastModified}`;
+        if (processedFilesRef.current.has(fileKey)) {
+          return false;
+        }
+        processedFilesRef.current.add(fileKey);
+        return true;
+      });
+
+      if (uniqueFiles.length === 0) {
+        if (inputRef.current) inputRef.current.value = '';
+        return;
+      }
+
       setCompressing(true);
       try {
         // 이미지 압축 (병렬 처리)
-        const compressedFiles = await compressImages(files);
+        const compressedFiles = await compressImages(uniqueFiles);
         const newPhotos = [...photos, ...compressedFiles];
         onPhotosChange(newPhotos);
-        const newUrls = compressedFiles.map(f => URL.createObjectURL(f));
-        setPreviewUrls(prev => [...prev, ...newUrls]);
       } catch (error) {
         console.error('Error compressing images:', error);
         // 압축 실패 시 원본 사용
-        const newPhotos = [...photos, ...files];
+        const newPhotos = [...photos, ...uniqueFiles];
         onPhotosChange(newPhotos);
-        const newUrls = files.map(f => URL.createObjectURL(f));
-        setPreviewUrls(prev => [...prev, ...newUrls]);
       } finally {
         setCompressing(false);
       }
@@ -168,20 +197,22 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange }: MultiPho
   };
 
   const handleRemove = (index: number) => {
+    const removedFile = photos[index];
+    if (removedFile) {
+      const fileKey = `${removedFile.name}-${removedFile.size}-${removedFile.lastModified}`;
+      processedFilesRef.current.delete(fileKey);
+    }
     const newPhotos = photos.filter((_, i) => i !== index);
     onPhotosChange(newPhotos);
-    if (previewUrls[index]) {
-      URL.revokeObjectURL(previewUrls[index]);
-    }
-    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   const photoCount = photos.length;
+  const isEmpty = photoCount === 0;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      <div className="p-1.5 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-        <p className="text-xs font-medium text-gray-700">{guide.label}</p>
+    <div className={`bg-white rounded-lg border overflow-hidden ${required && isEmpty ? 'border-red-300' : 'border-gray-200'}`}>
+      <div className={`p-1.5 border-b flex items-center justify-between ${required && isEmpty ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
+        <p className={`text-xs font-medium ${required && isEmpty ? 'text-red-600' : 'text-gray-700'}`}>{guide.label}</p>
         {photoCount > 0 && (
           <span className="text-xs bg-blue-100 text-blue-700 px-1.5 rounded">{photoCount}</span>
         )}
@@ -301,18 +332,30 @@ interface ExteriorPhotoSectionProps {
   title: string;
   photos: Record<'front' | 'right' | 'rear' | 'left', File[]>;
   onPhotoChange: (type: 'front' | 'right' | 'rear' | 'left', files: File[]) => void;
+  required?: boolean;
 }
 
-export function ExteriorPhotoSection({ title, photos, onPhotoChange }: ExteriorPhotoSectionProps) {
+export function ExteriorPhotoSection({ title, photos, onPhotoChange, required }: ExteriorPhotoSectionProps) {
   const totalPhotos = Object.values(photos).reduce((sum, arr) => sum + arr.length, 0);
+  const missingPhotos = EXTERIOR_GUIDES.filter(g => photos[g.type as 'front' | 'right' | 'rear' | 'left'].length === 0);
+  const hasAllPhotos = missingPhotos.length === 0;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-600 font-medium">{title}</p>
-        {totalPhotos > 0 && (
-          <span className="text-xs text-blue-600">{totalPhotos}장</span>
-        )}
+        <p className="text-sm text-gray-600 font-medium">
+          {title} {required && <span className="text-red-500">*</span>}
+        </p>
+        <div className="flex items-center gap-2">
+          {required && !hasAllPhotos && (
+            <span className="text-xs text-red-500">
+              {missingPhotos.map(g => g.label).join(', ')} 필요
+            </span>
+          )}
+          {totalPhotos > 0 && (
+            <span className="text-xs text-blue-600">{totalPhotos}장</span>
+          )}
+        </div>
       </div>
 
       {/* 4칸 그리드 (전/우/후/좌) */}
@@ -323,6 +366,7 @@ export function ExteriorPhotoSection({ title, photos, onPhotoChange }: ExteriorP
             guide={guide}
             photos={photos[guide.type as 'front' | 'right' | 'rear' | 'left']}
             onPhotosChange={(files) => onPhotoChange(guide.type as 'front' | 'right' | 'rear' | 'left', files)}
+            required={required}
           />
         ))}
       </div>
@@ -335,29 +379,58 @@ interface InteriorMultiPhotoSectionProps {
   title: string;
   photos: File[];
   onPhotosChange: (files: File[]) => void;
+  required?: boolean;
 }
 
-export function InteriorMultiPhotoSection({ title, photos, onPhotosChange }: InteriorMultiPhotoSectionProps) {
+export function InteriorMultiPhotoSection({ title, photos, onPhotosChange, required }: InteriorMultiPhotoSectionProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [compressing, setCompressing] = useState(false);
+  const processedFilesRef = useRef<Set<string>>(new Set());
+
+  // photos prop이 변경되면 preview URLs 동기화
+  useEffect(() => {
+    // 기존 URL 정리
+    previewUrls.forEach(url => URL.revokeObjectURL(url));
+
+    // photos에서 새 preview URLs 생성
+    const newUrls = photos.map(file => URL.createObjectURL(file));
+    setPreviewUrls(newUrls);
+
+    // cleanup
+    return () => {
+      newUrls.forEach(url => URL.revokeObjectURL(url));
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photos.length]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
+      // 중복 파일 필터링 (파일명+크기로 고유 식별)
+      const uniqueFiles = files.filter(file => {
+        const fileKey = `${file.name}-${file.size}-${file.lastModified}`;
+        if (processedFilesRef.current.has(fileKey)) {
+          return false;
+        }
+        processedFilesRef.current.add(fileKey);
+        return true;
+      });
+
+      if (uniqueFiles.length === 0) {
+        if (inputRef.current) inputRef.current.value = '';
+        return;
+      }
+
       setCompressing(true);
       try {
-        const compressedFiles = await compressImages(files);
+        const compressedFiles = await compressImages(uniqueFiles);
         const newPhotos = [...photos, ...compressedFiles];
         onPhotosChange(newPhotos);
-        const newUrls = compressedFiles.map(f => URL.createObjectURL(f));
-        setPreviewUrls(prev => [...prev, ...newUrls]);
       } catch (error) {
         console.error('Error compressing images:', error);
-        const newPhotos = [...photos, ...files];
+        const newPhotos = [...photos, ...uniqueFiles];
         onPhotosChange(newPhotos);
-        const newUrls = files.map(f => URL.createObjectURL(f));
-        setPreviewUrls(prev => [...prev, ...newUrls]);
       } finally {
         setCompressing(false);
       }
@@ -368,24 +441,34 @@ export function InteriorMultiPhotoSection({ title, photos, onPhotosChange }: Int
   };
 
   const handleRemove = (index: number) => {
+    const removedFile = photos[index];
+    if (removedFile) {
+      const fileKey = `${removedFile.name}-${removedFile.size}-${removedFile.lastModified}`;
+      processedFilesRef.current.delete(fileKey);
+    }
     const newPhotos = photos.filter((_, i) => i !== index);
     onPhotosChange(newPhotos);
-    if (previewUrls[index]) {
-      URL.revokeObjectURL(previewUrls[index]);
-    }
-    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
+
+  const isEmpty = photos.length === 0;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-600 font-medium">{title}</p>
-        {photos.length > 0 && (
-          <span className="text-xs text-blue-600">{photos.length}장</span>
-        )}
+        <p className="text-sm text-gray-600 font-medium">
+          {title} {required && <span className="text-red-500">*</span>}
+        </p>
+        <div className="flex items-center gap-2">
+          {required && isEmpty && (
+            <span className="text-xs text-red-500">사진 필요</span>
+          )}
+          {photos.length > 0 && (
+            <span className="text-xs text-blue-600">{photos.length}장</span>
+          )}
+        </div>
       </div>
 
-      <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+      <div className={`border rounded-lg p-3 ${required && isEmpty ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
         {/* 업로드된 사진 미리보기 */}
         {photos.length > 0 && (
           <div className="grid grid-cols-4 gap-2 mb-3">
@@ -412,16 +495,16 @@ export function InteriorMultiPhotoSection({ title, photos, onPhotosChange }: Int
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={compressing}
-          className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+          className={`w-full py-3 border-2 border-dashed rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 ${required && isEmpty ? 'border-red-300' : 'border-gray-300'}`}
         >
           {compressing ? (
             <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
           ) : (
             <>
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={`w-5 h-5 ${required && isEmpty ? 'text-red-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              <span className="text-sm text-gray-500">사진 추가</span>
+              <span className={`text-sm ${required && isEmpty ? 'text-red-500' : 'text-gray-500'}`}>사진 추가</span>
             </>
           )}
         </button>
