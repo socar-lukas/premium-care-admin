@@ -140,10 +140,11 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [compressing, setCompressing] = useState(false);
-  const processedFilesRef = useRef<Set<string>>(new Set());
+  // 이미 처리된 원본 파일명 추적 (압축 후 파일명이 변경되므로 원본 기준)
+  const processedBaseNamesRef = useRef<Set<string>>(new Set());
 
   // photos 배열의 고유 키 생성 (파일 내용 기반)
-  const photosKey = photos.map(f => `${f.name}-${f.size}-${f.lastModified}`).join('|');
+  const photosKey = photos.map(f => `${f.name}-${f.size}`).join('|');
 
   // photos prop이 변경되면 preview URLs 동기화
   useEffect(() => {
@@ -158,39 +159,56 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photosKey]);
 
+  // 파일의 기본 이름 추출 (확장자 제외)
+  const getBaseName = (fileName: string) => fileName.replace(/\.[^/.]+$/, '');
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      // 중복 파일 필터링 (파일명+크기로 고유 식별)
-      const uniqueFiles = files.filter(file => {
-        const fileKey = `${file.name}-${file.size}-${file.lastModified}`;
-        if (processedFilesRef.current.has(fileKey)) {
-          return false;
-        }
-        processedFilesRef.current.add(fileKey);
-        return true;
-      });
-
-      if (uniqueFiles.length === 0) {
-        if (inputRef.current) inputRef.current.value = '';
-        return;
-      }
-
-      setCompressing(true);
-      try {
-        // 이미지 압축 (병렬 처리)
-        const compressedFiles = await compressImages(uniqueFiles);
-        const newPhotos = [...photos, ...compressedFiles];
-        onPhotosChange(newPhotos);
-      } catch (error) {
-        console.error('Error compressing images:', error);
-        // 압축 실패 시 원본 사용
-        const newPhotos = [...photos, ...uniqueFiles];
-        onPhotosChange(newPhotos);
-      } finally {
-        setCompressing(false);
-      }
+    // 압축 중이면 무시
+    if (compressing) {
+      if (inputRef.current) inputRef.current.value = '';
+      return;
     }
+
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) {
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
+    // 이미 추가된 파일의 기본 이름들 (압축 후 .jpg로 변경되므로 기본 이름으로 비교)
+    const existingBaseNames = new Set(photos.map(f => getBaseName(f.name)));
+
+    // 중복 파일 필터링 (파일명 기준)
+    const uniqueFiles = files.filter(file => {
+      const baseName = getBaseName(file.name);
+      // 이미 photos에 있거나, 이번 세션에서 처리된 파일은 제외
+      if (existingBaseNames.has(baseName) || processedBaseNamesRef.current.has(baseName)) {
+        return false;
+      }
+      processedBaseNamesRef.current.add(baseName);
+      return true;
+    });
+
+    if (uniqueFiles.length === 0) {
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
+    setCompressing(true);
+    try {
+      // 이미지 압축 (병렬 처리)
+      const compressedFiles = await compressImages(uniqueFiles);
+      const newPhotos = [...photos, ...compressedFiles];
+      onPhotosChange(newPhotos);
+    } catch (error) {
+      console.error('Error compressing images:', error);
+      // 압축 실패 시 원본 사용
+      const newPhotos = [...photos, ...uniqueFiles];
+      onPhotosChange(newPhotos);
+    } finally {
+      setCompressing(false);
+    }
+
     if (inputRef.current) {
       inputRef.current.value = '';
     }
@@ -199,8 +217,9 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
   const handleRemove = (index: number) => {
     const removedFile = photos[index];
     if (removedFile) {
-      const fileKey = `${removedFile.name}-${removedFile.size}-${removedFile.lastModified}`;
-      processedFilesRef.current.delete(fileKey);
+      // 압축된 파일명에서 기본 이름 추출해서 제거
+      const baseName = getBaseName(removedFile.name);
+      processedBaseNamesRef.current.delete(baseName);
     }
     const newPhotos = photos.filter((_, i) => i !== index);
     onPhotosChange(newPhotos);
@@ -386,10 +405,11 @@ export function InteriorMultiPhotoSection({ title, photos, onPhotosChange, requi
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [compressing, setCompressing] = useState(false);
-  const processedFilesRef = useRef<Set<string>>(new Set());
+  // 이미 처리된 원본 파일명 추적 (압축 후 파일명이 변경되므로 원본 기준)
+  const processedBaseNamesRef = useRef<Set<string>>(new Set());
 
   // photos 배열의 고유 키 생성 (파일 내용 기반)
-  const photosKey = photos.map(f => `${f.name}-${f.size}-${f.lastModified}`).join('|');
+  const photosKey = photos.map(f => `${f.name}-${f.size}`).join('|');
 
   // photos prop이 변경되면 preview URLs 동기화
   useEffect(() => {
@@ -404,37 +424,54 @@ export function InteriorMultiPhotoSection({ title, photos, onPhotosChange, requi
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photosKey]);
 
+  // 파일의 기본 이름 추출 (확장자 제외)
+  const getBaseName = (fileName: string) => fileName.replace(/\.[^/.]+$/, '');
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      // 중복 파일 필터링 (파일명+크기로 고유 식별)
-      const uniqueFiles = files.filter(file => {
-        const fileKey = `${file.name}-${file.size}-${file.lastModified}`;
-        if (processedFilesRef.current.has(fileKey)) {
-          return false;
-        }
-        processedFilesRef.current.add(fileKey);
-        return true;
-      });
-
-      if (uniqueFiles.length === 0) {
-        if (inputRef.current) inputRef.current.value = '';
-        return;
-      }
-
-      setCompressing(true);
-      try {
-        const compressedFiles = await compressImages(uniqueFiles);
-        const newPhotos = [...photos, ...compressedFiles];
-        onPhotosChange(newPhotos);
-      } catch (error) {
-        console.error('Error compressing images:', error);
-        const newPhotos = [...photos, ...uniqueFiles];
-        onPhotosChange(newPhotos);
-      } finally {
-        setCompressing(false);
-      }
+    // 압축 중이면 무시
+    if (compressing) {
+      if (inputRef.current) inputRef.current.value = '';
+      return;
     }
+
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) {
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
+    // 이미 추가된 파일의 기본 이름들 (압축 후 .jpg로 변경되므로 기본 이름으로 비교)
+    const existingBaseNames = new Set(photos.map(f => getBaseName(f.name)));
+
+    // 중복 파일 필터링 (파일명 기준)
+    const uniqueFiles = files.filter(file => {
+      const baseName = getBaseName(file.name);
+      // 이미 photos에 있거나, 이번 세션에서 처리된 파일은 제외
+      if (existingBaseNames.has(baseName) || processedBaseNamesRef.current.has(baseName)) {
+        return false;
+      }
+      processedBaseNamesRef.current.add(baseName);
+      return true;
+    });
+
+    if (uniqueFiles.length === 0) {
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
+    setCompressing(true);
+    try {
+      const compressedFiles = await compressImages(uniqueFiles);
+      const newPhotos = [...photos, ...compressedFiles];
+      onPhotosChange(newPhotos);
+    } catch (error) {
+      console.error('Error compressing images:', error);
+      const newPhotos = [...photos, ...uniqueFiles];
+      onPhotosChange(newPhotos);
+    } finally {
+      setCompressing(false);
+    }
+
     if (inputRef.current) {
       inputRef.current.value = '';
     }
@@ -443,8 +480,9 @@ export function InteriorMultiPhotoSection({ title, photos, onPhotosChange, requi
   const handleRemove = (index: number) => {
     const removedFile = photos[index];
     if (removedFile) {
-      const fileKey = `${removedFile.name}-${removedFile.size}-${removedFile.lastModified}`;
-      processedFilesRef.current.delete(fileKey);
+      // 압축된 파일명에서 기본 이름 추출해서 제거
+      const baseName = getBaseName(removedFile.name);
+      processedBaseNamesRef.current.delete(baseName);
     }
     const newPhotos = photos.filter((_, i) => i !== index);
     onPhotosChange(newPhotos);
