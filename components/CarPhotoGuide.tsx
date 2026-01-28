@@ -142,21 +142,21 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
   const [compressing, setCompressing] = useState(false);
   const processedFilesRef = useRef<Set<string>>(new Set());
 
+  // photos 배열의 고유 키 생성 (파일 내용 기반)
+  const photosKey = photos.map(f => `${f.name}-${f.size}-${f.lastModified}`).join('|');
+
   // photos prop이 변경되면 preview URLs 동기화
   useEffect(() => {
-    // 기존 URL 정리
-    previewUrls.forEach(url => URL.revokeObjectURL(url));
-
     // photos에서 새 preview URLs 생성
     const newUrls = photos.map(file => URL.createObjectURL(file));
     setPreviewUrls(newUrls);
 
-    // cleanup
+    // cleanup - 이 effect가 다시 실행되거나 컴포넌트가 unmount될 때만 정리
     return () => {
       newUrls.forEach(url => URL.revokeObjectURL(url));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photos.length]);
+  }, [photosKey]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -388,21 +388,21 @@ export function InteriorMultiPhotoSection({ title, photos, onPhotosChange, requi
   const [compressing, setCompressing] = useState(false);
   const processedFilesRef = useRef<Set<string>>(new Set());
 
+  // photos 배열의 고유 키 생성 (파일 내용 기반)
+  const photosKey = photos.map(f => `${f.name}-${f.size}-${f.lastModified}`).join('|');
+
   // photos prop이 변경되면 preview URLs 동기화
   useEffect(() => {
-    // 기존 URL 정리
-    previewUrls.forEach(url => URL.revokeObjectURL(url));
-
     // photos에서 새 preview URLs 생성
     const newUrls = photos.map(file => URL.createObjectURL(file));
     setPreviewUrls(newUrls);
 
-    // cleanup
+    // cleanup - 이 effect가 다시 실행되거나 컴포넌트가 unmount될 때만 정리
     return () => {
       newUrls.forEach(url => URL.revokeObjectURL(url));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photos.length]);
+  }, [photosKey]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
