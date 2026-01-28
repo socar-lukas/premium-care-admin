@@ -107,8 +107,10 @@ export default function VehiclesPage() {
           <div className="flex justify-between h-14 md:h-16 items-center">
             <Link href="/" className="flex items-center gap-3">
               <BlackLabelLogo />
-              <span className="text-base md:text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                BlackLabel Admin
+              <span className="text-base md:text-lg font-black tracking-tight">
+                <span className="bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text text-transparent drop-shadow-sm">Black</span>
+                <span className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Label</span>
+                <span className="text-gray-500 font-medium ml-1">Admin</span>
               </span>
             </Link>
             <div className="hidden md:flex gap-3">

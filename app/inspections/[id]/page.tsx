@@ -129,7 +129,11 @@ export default function InspectionDetailPage({
           <div className="flex justify-between h-14 items-center">
             <Link href="/" className="flex items-center gap-2">
               <BlackLabelLogo />
-              <span className="text-sm font-bold text-gray-900">BlackLabel Admin</span>
+              <span className="text-sm font-black tracking-tight">
+                <span className="bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text text-transparent">Black</span>
+                <span className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Label</span>
+                <span className="text-gray-500 font-medium ml-0.5">Admin</span>
+              </span>
             </Link>
             <Link
               href={`/vehicles/${inspection.vehicle.id}`}

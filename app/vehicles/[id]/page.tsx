@@ -215,8 +215,10 @@ export default function VehicleDetailPage({
             {/* 데스크톱: 로고 및 타이틀 */}
             <Link href="/" className="hidden md:flex items-center gap-3">
               <BlackLabelLogo />
-              <span className="text-lg font-bold text-gray-900">
-                BlackLabel Admin
+              <span className="text-lg font-black tracking-tight">
+                <span className="bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text text-transparent drop-shadow-sm">Black</span>
+                <span className="bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Label</span>
+                <span className="text-gray-500 font-medium ml-1">Admin</span>
               </span>
             </Link>
 
