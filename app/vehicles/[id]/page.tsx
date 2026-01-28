@@ -80,10 +80,12 @@ export default function VehicleDetailPage({
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deletingVehicle, setDeletingVehicle] = useState(false);
   const [showAllInspections, setShowAllInspections] = useState(false);
+  const [showAllReturnRecords, setShowAllReturnRecords] = useState(false);
   const [showAllMaintenance, setShowAllMaintenance] = useState(false);
 
-  // 세차·점검 기록과 소모품·경정비 기록 분리
-  const carWashInspections = inspections.filter(i => i.inspectionType !== '소모품·경정비');
+  // 세차점검 기록, 반납상태 기록, 소모품·경정비 기록 분리
+  const carWashInspections = inspections.filter(i => i.inspectionType === '세차점검');
+  const returnStatusRecords = inspections.filter(i => i.inspectionType === '반납상태');
   const maintenanceRecords = inspections.filter(i => i.inspectionType === '소모품·경정비');
 
   // 당월 세차 통계 계산
@@ -540,6 +542,228 @@ export default function VehicleDetailPage({
                 {carWashInspections.length > 3 && showAllInspections && (
                   <button
                     onClick={() => setShowAllInspections(false)}
+                    className="w-full py-3 text-center text-gray-500 hover:text-gray-700 font-medium text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+                  >
+                    접기
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 반납상태 기록 목록 */}
+        <div className="bg-white rounded-lg shadow mb-6">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-xl font-bold text-gray-900">반납상태 기록</h2>
+          </div>
+          <div className="p-6">
+            {returnStatusRecords.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                등록된 반납상태 기록이 없습니다.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {(showAllReturnRecords ? returnStatusRecords : returnStatusRecords.slice(0, 3)).map((record) => {
+                  const details = record.details;
+                  const hasReturnMemo = record.memo && record.memo.trim().length > 0;
+                  const hasExteriorIssue = details?.exteriorDamage && details.exteriorDamage !== '이상없음';
+                  const hasPhotos = record.areas?.some(area => area.photos && area.photos.length > 0);
+                  const allPhotos = record.areas?.flatMap(area => area.photos || []) || [];
+
+                  return (
+                    <div
+                      key={record.id}
+                      className="border border-gray-200 rounded-xl overflow-hidden"
+                    >
+                      {/* 상단 요약 정보 */}
+                      <div className="p-4 bg-blue-50">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <p className="text-sm text-gray-500">
+                              {record.completedAt
+                                ? new Date(record.completedAt).toLocaleString('ko-KR', {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
+                                : new Date(record.inspectionDate).toLocaleString('ko-KR', {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                              {' 완료'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/inspections/${record.id}`}
+                              className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                            >
+                              상세보기
+                            </Link>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDeleteInspection(record.id)}
+                                disabled={deleting === record.id}
+                                className="text-red-500 hover:text-red-700 text-sm disabled:opacity-50"
+                              >
+                                {deleting === record.id ? '삭제 중...' : '삭제'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 태그 형태의 요약 정보 */}
+                        <div className="flex flex-wrap gap-2">
+                          {/* 오염도 */}
+                          {details?.contamination && (
+                            <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+                              details.contamination === '상' ? 'bg-red-100 text-red-700' :
+                              details.contamination === '중' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>
+                              오염도: {details.contamination}
+                            </span>
+                          )}
+
+                          {/* 외관이상 */}
+                          <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+                            hasExteriorIssue ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                          }`}>
+                            외관 {hasExteriorIssue ? details?.exteriorDamage : '이상없음'}
+                          </span>
+
+                          {/* 특이사항 */}
+                          <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+                            hasReturnMemo ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                          }`}>
+                            특이사항 {hasReturnMemo ? 'O' : 'X'}
+                          </span>
+
+                          {/* 사진 첨부 */}
+                          <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
+                            hasPhotos ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                          }`}>
+                            사진첨부 {hasPhotos ? 'O' : 'X'}
+                          </span>
+
+                          {/* 담당자 */}
+                          {record.inspector && (
+                            <span className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium">
+                              담당: {record.inspector}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 하단 상세 내용 */}
+                      {(record.memo || allPhotos.length > 0 || details?.tires || details?.interiorContamination) && (
+                        <div className="p-4 border-t border-gray-100">
+                          {/* 타이어 상태 */}
+                          {details?.tires && (
+                            <div className="mb-3">
+                              <p className="text-xs text-gray-500 mb-1">타이어 상태</p>
+                              <div className="flex flex-wrap gap-2 text-xs">
+                                <span className={`px-2 py-1 rounded ${details.tires.frontLeft === '정상' ? 'bg-green-100 text-green-700' : details.tires.frontLeft === '경미' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                                  앞좌: {details.tires.frontLeft}
+                                </span>
+                                <span className={`px-2 py-1 rounded ${details.tires.frontRight === '정상' ? 'bg-green-100 text-green-700' : details.tires.frontRight === '경미' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                                  앞우: {details.tires.frontRight}
+                                </span>
+                                <span className={`px-2 py-1 rounded ${details.tires.rearLeft === '정상' ? 'bg-green-100 text-green-700' : details.tires.rearLeft === '경미' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                                  뒤좌: {details.tires.rearLeft}
+                                </span>
+                                <span className={`px-2 py-1 rounded ${details.tires.rearRight === '정상' ? 'bg-green-100 text-green-700' : details.tires.rearRight === '경미' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                                  뒤우: {details.tires.rearRight}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 내부 오염 위치 */}
+                          {details?.interiorContamination && details.interiorContamination.length > 0 && (
+                            <div className="mb-3">
+                              <p className="text-xs text-gray-500 mb-1">내부 오염 위치</p>
+                              <p className="text-sm text-gray-700">{details.interiorContamination.join(', ')}</p>
+                            </div>
+                          )}
+
+                          {/* 특이사항 메모 */}
+                          {record.memo && (
+                            <div className="mb-3">
+                              <p className="text-xs text-gray-500 mb-1">특이사항</p>
+                              <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">
+                                {record.memo}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* 사진 미리보기 */}
+                          {allPhotos.length > 0 && (
+                            <div>
+                              <p className="text-xs text-gray-500 mb-2">첨부 사진 ({allPhotos.length}장)</p>
+                              <div className="flex gap-2">
+                                {allPhotos.slice(0, 3).map((photo) => (
+                                  <div
+                                    key={photo.id}
+                                    className="w-16 h-16 flex-shrink-0 relative rounded-lg overflow-hidden bg-gray-100"
+                                  >
+                                    {(() => {
+                                      const imageUrl = photo.googleDriveUrl ||
+                                        (photo.filePath?.startsWith('http') ? photo.filePath : null);
+
+                                      if (imageUrl) {
+                                        return (
+                                          // eslint-disable-next-line @next/next/no-img-element
+                                          <img
+                                            src={imageUrl}
+                                            alt={photo.originalFileName}
+                                            className="w-full h-full object-cover"
+                                            loading="lazy"
+                                          />
+                                        );
+                                      }
+                                      return (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs p-1 text-center">
+                                          {photo.originalFileName}
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                ))}
+                                {allPhotos.length > 3 && (
+                                  <div className="w-16 h-16 flex-shrink-0 flex items-center justify-center bg-gray-100 rounded-lg text-sm text-gray-500 font-medium">
+                                    +{allPhotos.length - 3}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* 더보기 버튼 */}
+                {returnStatusRecords.length > 3 && !showAllReturnRecords && (
+                  <button
+                    onClick={() => setShowAllReturnRecords(true)}
+                    className="w-full py-3 text-center text-blue-600 hover:text-blue-800 font-medium text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+                  >
+                    더보기 ({returnStatusRecords.length - 3}개 더)
+                  </button>
+                )}
+
+                {/* 접기 버튼 */}
+                {returnStatusRecords.length > 3 && showAllReturnRecords && (
+                  <button
+                    onClick={() => setShowAllReturnRecords(false)}
                     className="w-full py-3 text-center text-gray-500 hover:text-gray-700 font-medium text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
                   >
                     접기

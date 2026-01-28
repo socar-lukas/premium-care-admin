@@ -123,27 +123,69 @@ export async function GET() {
       return r.start_at_kst >= now && r.start_at_kst <= next24Hours;
     });
 
-    // 3. D+1 점검 필요: D+1 예약 중 점검이력이 없는 예약 건수 (중복 허용)
+    // 3. D+1 점검 필요: D+1 예약 중 예약 시작 9시간 전까지 세차점검 기록이 없는 차량
     // 먼저 D+1 예약의 차량번호들 수집
     const upcomingCarNums = [...new Set(upcomingReservations.map(r => r.car_num))];
 
-    // 점검이력 조회
-    let vehiclesWithInspection: Set<string> = new Set();
-    if (upcomingCarNums.length > 0) {
-      const vehiclesWithInspectionData = await prisma.vehicle.findMany({
-        where: {
-          vehicleNumber: { in: upcomingCarNums },
-          inspections: { some: {} } // 점검이력이 있는 차량만
-        },
-        select: { vehicleNumber: true }
-      });
-      vehiclesWithInspection = new Set(vehiclesWithInspectionData.map(v => v.vehicleNumber));
-    }
+    // 각 예약별로 점검 필요 여부 판단
+    // 예약 시작 시간 9시간 전부터 현재까지 "세차점검" 기록이 있는지 확인
+    const needsInspectionReservations: Reservation[] = [];
 
-    // D+1 예약 중 점검이력 없는 예약 건수 (중복 허용)
-    const needsInspectionReservations = upcomingReservations.filter(r =>
-      !vehiclesWithInspection.has(r.car_num)
-    );
+    if (upcomingCarNums.length > 0) {
+      // 차량번호로 Vehicle ID 매핑 조회
+      const vehicleData = await prisma.vehicle.findMany({
+        where: {
+          vehicleNumber: { in: upcomingCarNums }
+        },
+        select: {
+          id: true,
+          vehicleNumber: true,
+          inspections: {
+            where: {
+              inspectionType: '세차점검' // 반납상태가 아닌 세차점검만
+            },
+            orderBy: {
+              completedAt: 'desc'
+            },
+            take: 1, // 가장 최근 세차점검 기록만
+            select: {
+              completedAt: true,
+              inspectionDate: true
+            }
+          }
+        }
+      });
+
+      // 차량번호별 최근 세차점검 시간 매핑
+      const lastCarWashMap: Record<string, Date | null> = {};
+      for (const v of vehicleData) {
+        const lastInspection = v.inspections[0];
+        if (lastInspection) {
+          lastCarWashMap[v.vehicleNumber] = lastInspection.completedAt || lastInspection.inspectionDate;
+        } else {
+          lastCarWashMap[v.vehicleNumber] = null;
+        }
+      }
+
+      // 각 예약에 대해 점검 필요 여부 확인
+      for (const r of upcomingReservations) {
+        if (!r.start_at_kst) continue;
+
+        // 예약 시작 9시간 전 시간 계산
+        const nineHoursBefore = new Date(r.start_at_kst.getTime() - 9 * 60 * 60 * 1000);
+
+        // 해당 차량의 최근 세차점검 기록 확인
+        const lastCarWash = lastCarWashMap[r.car_num];
+
+        // 세차점검 기록이 없거나, 9시간 전보다 이전에 한 경우 점검 필요
+        if (!lastCarWash || lastCarWash < nineHoursBefore) {
+          needsInspectionReservations.push(r);
+        }
+      }
+    } else {
+      // upcomingCarNums가 비어있으면 모든 예약이 점검 필요 (DB에 차량이 없음)
+      needsInspectionReservations.push(...upcomingReservations);
+    }
 
     // 차량별 예약 상태 정보 (차량 목록에서 사용)
     // 각 차량의 현재 상태: 운행중 / 대기중 + 차량명
