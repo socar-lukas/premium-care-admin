@@ -295,3 +295,146 @@ export function PhotoSection({ title, photos, onPhotoChange }: PhotoSectionProps
     </div>
   );
 }
+
+// 외관 사진 전용 섹션 (전/우/후/좌 4칸만)
+interface ExteriorPhotoSectionProps {
+  title: string;
+  photos: Record<'front' | 'right' | 'rear' | 'left', File[]>;
+  onPhotoChange: (type: 'front' | 'right' | 'rear' | 'left', files: File[]) => void;
+}
+
+export function ExteriorPhotoSection({ title, photos, onPhotoChange }: ExteriorPhotoSectionProps) {
+  const totalPhotos = Object.values(photos).reduce((sum, arr) => sum + arr.length, 0);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-600 font-medium">{title}</p>
+        {totalPhotos > 0 && (
+          <span className="text-xs text-blue-600">{totalPhotos}장</span>
+        )}
+      </div>
+
+      {/* 4칸 그리드 (전/우/후/좌) */}
+      <div className="grid grid-cols-4 gap-2">
+        {EXTERIOR_GUIDES.map((guide) => (
+          <MultiPhotoUploadCard
+            key={guide.type}
+            guide={guide}
+            photos={photos[guide.type as 'front' | 'right' | 'rear' | 'left']}
+            onPhotosChange={(files) => onPhotoChange(guide.type as 'front' | 'right' | 'rear' | 'left', files)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// 내부 사진 통합 업로드 섹션 (발매트, 컵홀더 등 여러 장)
+interface InteriorMultiPhotoSectionProps {
+  title: string;
+  photos: File[];
+  onPhotosChange: (files: File[]) => void;
+}
+
+export function InteriorMultiPhotoSection({ title, photos, onPhotosChange }: InteriorMultiPhotoSectionProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [compressing, setCompressing] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      setCompressing(true);
+      try {
+        const compressedFiles = await compressImages(files);
+        const newPhotos = [...photos, ...compressedFiles];
+        onPhotosChange(newPhotos);
+        const newUrls = compressedFiles.map(f => URL.createObjectURL(f));
+        setPreviewUrls(prev => [...prev, ...newUrls]);
+      } catch (error) {
+        console.error('Error compressing images:', error);
+        const newPhotos = [...photos, ...files];
+        onPhotosChange(newPhotos);
+        const newUrls = files.map(f => URL.createObjectURL(f));
+        setPreviewUrls(prev => [...prev, ...newUrls]);
+      } finally {
+        setCompressing(false);
+      }
+    }
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  };
+
+  const handleRemove = (index: number) => {
+    const newPhotos = photos.filter((_, i) => i !== index);
+    onPhotosChange(newPhotos);
+    if (previewUrls[index]) {
+      URL.revokeObjectURL(previewUrls[index]);
+    }
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-600 font-medium">{title}</p>
+        {photos.length > 0 && (
+          <span className="text-xs text-blue-600">{photos.length}장</span>
+        )}
+      </div>
+
+      <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+        {/* 업로드된 사진 미리보기 */}
+        {photos.length > 0 && (
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            {previewUrls.map((url, index) => (
+              <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={`내부 사진 ${index + 1}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => handleRemove(index)}
+                  className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 업로드 버튼 */}
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={compressing}
+          className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {compressing ? (
+            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <>
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="text-sm text-gray-500">사진 추가</span>
+            </>
+          )}
+        </button>
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleFileChange}
+          className="hidden"
+        />
+      </div>
+    </div>
+  );
+}

@@ -483,8 +483,15 @@ export default function Home() {
                 </>
               )}
               <Link
-                href="/inspections/new"
+                href="/inspections/new?mode=return"
                 className="gradient-button-primary px-5 py-2 text-white rounded-lg text-sm font-semibold shadow-lg"
+              >
+                반납상태 등록
+              </Link>
+              <Link
+                href="/inspections/new?mode=carwash"
+                className="px-4 py-2 text-white rounded-lg text-sm font-semibold shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}
               >
                 세차·점검 등록
               </Link>

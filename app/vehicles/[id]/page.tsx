@@ -229,8 +229,14 @@ export default function VehicleDetailPage({
                 대시보드
               </Link>
               <Link
-                href={`/inspections/new?vehicleId=${vehicle.id}&vehicleNumber=${encodeURIComponent(vehicle.vehicleNumber)}&manufacturer=${encodeURIComponent(vehicle.manufacturer || '')}&model=${encodeURIComponent(vehicle.model || '')}`}
+                href={`/inspections/new?mode=return&vehicleId=${vehicle.id}&vehicleNumber=${encodeURIComponent(vehicle.vehicleNumber)}&manufacturer=${encodeURIComponent(vehicle.manufacturer || '')}&model=${encodeURIComponent(vehicle.model || '')}`}
                 className="px-4 py-2 text-white rounded-md text-sm font-medium transition-all duration-200" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}
+              >
+                반납상태 등록
+              </Link>
+              <Link
+                href={`/inspections/new?mode=carwash&vehicleId=${vehicle.id}&vehicleNumber=${encodeURIComponent(vehicle.vehicleNumber)}&manufacturer=${encodeURIComponent(vehicle.manufacturer || '')}&model=${encodeURIComponent(vehicle.model || '')}`}
+                className="px-4 py-2 text-white rounded-md text-sm font-medium transition-all duration-200" style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}
               >
                 세차·점검 등록
               </Link>
@@ -740,20 +746,27 @@ export default function VehicleDetailPage({
       </main>
 
       {/* 모바일 하단 고정 액션 버튼 */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 flex gap-2 safe-area-bottom">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 flex gap-1.5 safe-area-bottom">
         <Link
-          href={`/inspections/new?vehicleId=${vehicle.id}&vehicleNumber=${encodeURIComponent(vehicle.vehicleNumber)}&manufacturer=${encodeURIComponent(vehicle.manufacturer || '')}&model=${encodeURIComponent(vehicle.model || '')}`}
-          className="flex-1 py-3 text-white rounded-xl text-sm font-semibold text-center shadow-lg"
+          href={`/inspections/new?mode=return&vehicleId=${vehicle.id}&vehicleNumber=${encodeURIComponent(vehicle.vehicleNumber)}&manufacturer=${encodeURIComponent(vehicle.manufacturer || '')}&model=${encodeURIComponent(vehicle.model || '')}`}
+          className="flex-1 py-3 text-white rounded-xl text-xs font-semibold text-center shadow-lg"
           style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}
         >
-          세차·점검 등록
+          반납상태
+        </Link>
+        <Link
+          href={`/inspections/new?mode=carwash&vehicleId=${vehicle.id}&vehicleNumber=${encodeURIComponent(vehicle.vehicleNumber)}&manufacturer=${encodeURIComponent(vehicle.manufacturer || '')}&model=${encodeURIComponent(vehicle.model || '')}`}
+          className="flex-1 py-3 text-white rounded-xl text-xs font-semibold text-center shadow-lg"
+          style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}
+        >
+          세차·점검
         </Link>
         <Link
           href={`/maintenance/new?vehicleId=${vehicle.id}&vehicleNumber=${encodeURIComponent(vehicle.vehicleNumber)}&manufacturer=${encodeURIComponent(vehicle.manufacturer || '')}&model=${encodeURIComponent(vehicle.model || '')}`}
-          className="flex-1 py-3 text-white rounded-xl text-sm font-semibold text-center shadow-lg"
+          className="flex-1 py-3 text-white rounded-xl text-xs font-semibold text-center shadow-lg"
           style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}
         >
-          소모품·경정비 등록
+          소모품·경정비
         </Link>
       </div>
     </div>

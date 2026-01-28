@@ -6,7 +6,8 @@ import Link from 'next/link';
 import SocarLogo from '@/components/SocarLogo';
 import {
   PhotoGuideType,
-  PhotoSection,
+  ExteriorPhotoSection,
+  InteriorMultiPhotoSection,
 } from '@/components/CarPhotoGuide';
 
 interface Vehicle {
@@ -30,6 +31,10 @@ export default function NewInspectionPage() {
 function InspectionForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const mode = searchParams.get('mode') || 'return'; // 'return' = 반납상태, 'carwash' = 세차점검
+  const isReturnMode = mode === 'return';
+  const isCarwashMode = mode === 'carwash';
+
   const [submitting, setSubmitting] = useState(false);
   const [startTime] = useState(new Date());
   const [startTimeDisplay, setStartTimeDisplay] = useState('');
@@ -79,21 +84,23 @@ function InspectionForm() {
   const [warningLights, setWarningLights] = useState<string[]>([]); // 경고등
   const [memo, setMemo] = useState(''); // 특이사항
 
-  // 사진 촬영 (점검 전/후 동일 포맷: 전/후/좌/우 + 내부, 각 부위별 다중 사진)
-  const [beforePhotos, setBeforePhotos] = useState<Record<PhotoGuideType, File[]>>({
+  // 외관 사진 (전/후/좌/우만)
+  const [beforeExteriorPhotos, setBeforeExteriorPhotos] = useState<Record<'front' | 'rear' | 'left' | 'right', File[]>>({
     front: [],
     rear: [],
     left: [],
     right: [],
-    interior: [],
   });
-  const [afterPhotos, setAfterPhotos] = useState<Record<PhotoGuideType, File[]>>({
+  const [afterExteriorPhotos, setAfterExteriorPhotos] = useState<Record<'front' | 'rear' | 'left' | 'right', File[]>>({
     front: [],
     rear: [],
     left: [],
     right: [],
-    interior: [],
   });
+  // 내부 사진 (통합 업로드)
+  const [beforeInteriorPhotos, setBeforeInteriorPhotos] = useState<File[]>([]);
+  const [afterInteriorPhotos, setAfterInteriorPhotos] = useState<File[]>([]);
+
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
 
@@ -170,29 +177,35 @@ function InspectionForm() {
 
     try {
       // 사진이 있는지 확인
-      const hasPhotos = Object.values(beforePhotos).some(arr => arr.length > 0) ||
-                       Object.values(afterPhotos).some(arr => arr.length > 0);
+      const hasPhotos = isReturnMode
+        ? (Object.values(beforeExteriorPhotos).some(arr => arr.length > 0) || beforeInteriorPhotos.length > 0)
+        : (Object.values(afterExteriorPhotos).some(arr => arr.length > 0) || afterInteriorPhotos.length > 0);
 
-      // 점검 데이터 구성
+      // 점검 데이터 구성 (모드에 따라 다름)
       const inspectionData = {
         vehicleId: selectedVehicle.id,
         inspectionDate: startTime.toISOString(),
         completedAt: endTime.toISOString(),
-        inspectionType: '세차점검',
-        overallStatus: exteriorDamage === '파손(운행불가)' ? '불량' : exteriorDamage === '경미(운행가능)' ? '보통' : '양호',
+        inspectionType: isReturnMode ? '반납상태' : '세차점검',
+        overallStatus: isReturnMode
+          ? (exteriorDamage === '파손(운행불가)' ? '불량' : exteriorDamage === '경미(운행가능)' ? '보통' : '양호')
+          : '양호',
         inspector: selectedInspector,
         memo: memo || undefined,
-        // 상세 점검 데이터
-        details: {
-          contamination,
-          exteriorDamage,
-          tires,
-          interiorContamination,
-          carWash,
-          battery,
-          wiperWasher,
-          warningLights,
-        },
+        // 상세 점검 데이터 (모드에 따라 다름)
+        details: isReturnMode
+          ? {
+              contamination,
+              exteriorDamage,
+              tires,
+              interiorContamination,
+            }
+          : {
+              carWash,
+              battery,
+              wiperWasher,
+              warningLights,
+            },
         // 사진이 있으면 기본 영역 생성
         areas: hasPhotos ? [
           {
@@ -221,19 +234,29 @@ function InspectionForm() {
       // 사진 업로드 (각 부위별 다중 사진 지원)
       const allPhotos: { type: string; file: File }[] = [];
 
-      // 점검 전 사진들
-      Object.entries(beforePhotos).forEach(([type, files]) => {
-        files.forEach((file, index) => {
-          allPhotos.push({ type: `before_${type}_${index + 1}`, file });
+      if (isReturnMode) {
+        // 반납상태: 점검 전 외관 사진
+        Object.entries(beforeExteriorPhotos).forEach(([type, files]) => {
+          files.forEach((file, index) => {
+            allPhotos.push({ type: `before_${type}_${index + 1}`, file });
+          });
         });
-      });
-
-      // 점검 후 사진들
-      Object.entries(afterPhotos).forEach(([type, files]) => {
-        files.forEach((file, index) => {
-          allPhotos.push({ type: `after_${type}_${index + 1}`, file });
+        // 반납상태: 점검 전 내부 사진
+        beforeInteriorPhotos.forEach((file, index) => {
+          allPhotos.push({ type: `before_interior_${index + 1}`, file });
         });
-      });
+      } else {
+        // 세차점검: 점검 후 외관 사진
+        Object.entries(afterExteriorPhotos).forEach(([type, files]) => {
+          files.forEach((file, index) => {
+            allPhotos.push({ type: `after_${type}_${index + 1}`, file });
+          });
+        });
+        // 세차점검: 점검 후 내부 사진
+        afterInteriorPhotos.forEach((file, index) => {
+          allPhotos.push({ type: `after_interior_${index + 1}`, file });
+        });
+      }
 
       if (allPhotos.length > 0 && inspection.areas && inspection.areas.length > 0) {
         setUploadingPhotos(true);
@@ -313,16 +336,18 @@ function InspectionForm() {
     );
   };
 
-  // 폼 유효성 검사
-  const isFormValid =
-    selectedVehicle &&
-    selectedInspector &&
-    contamination &&
-    exteriorDamage &&
-    tires.frontLeft && tires.frontRight && tires.rearLeft && tires.rearRight &&
-    interiorContamination.length > 0 &&
-    carWash &&
-    battery;
+  // 폼 유효성 검사 (모드에 따라 다름)
+  const isFormValid = isReturnMode
+    ? (selectedVehicle &&
+       selectedInspector &&
+       contamination &&
+       exteriorDamage &&
+       tires.frontLeft && tires.frontRight && tires.rearLeft && tires.rearRight &&
+       interiorContamination.length > 0)
+    : (selectedVehicle &&
+       selectedInspector &&
+       carWash &&
+       battery);
 
   // 멀티 선택 토글
   const toggleMultiSelect = (value: string, current: string[], setter: (val: string[]) => void) => {
@@ -333,14 +358,12 @@ function InspectionForm() {
     }
   };
 
-  // 점검 전 사진 변경 핸들러
-  const handleBeforePhotoChange = (type: PhotoGuideType, files: File[]) => {
-    setBeforePhotos(prev => ({ ...prev, [type]: files }));
+  // 외관 사진 변경 핸들러
+  const handleBeforeExteriorPhotoChange = (type: 'front' | 'rear' | 'left' | 'right', files: File[]) => {
+    setBeforeExteriorPhotos(prev => ({ ...prev, [type]: files }));
   };
-
-  // 점검 후 사진 변경 핸들러
-  const handleAfterPhotoChange = (type: PhotoGuideType, files: File[]) => {
-    setAfterPhotos(prev => ({ ...prev, [type]: files }));
+  const handleAfterExteriorPhotoChange = (type: 'front' | 'rear' | 'left' | 'right', files: File[]) => {
+    setAfterExteriorPhotos(prev => ({ ...prev, [type]: files }));
   };
 
   return (
@@ -373,7 +396,9 @@ function InspectionForm() {
               </svg>
             </div>
             <div>
-              <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">세차·점검 등록</h1>
+              <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                {isReturnMode ? '반납상태 등록' : '세차·점검 등록'}
+              </h1>
               <p className="text-xs text-gray-500">시작: {startTimeDisplay || '-'}</p>
             </div>
           </div>
@@ -503,10 +528,12 @@ function InspectionForm() {
               </div>
             </div>
 
-            {/* 차량 상태 점검 섹션 */}
+            {/* 차량 상태 점검 섹션 - 반납상태 모드에서만 표시 */}
+            {isReturnMode && (
+            <>
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                <h3 className="text-base font-semibold text-gray-800">차량 상태 점검</h3>
+                <h3 className="text-base font-semibold text-gray-800">차량 반납 상태 점검</h3>
                 <a
                   href="https://example.com/car-wash-guide"
                   target="_blank"
@@ -657,15 +684,27 @@ function InspectionForm() {
                 ))}
               </div>
             </div>
+            </>
+            )}
 
-            {/* 점검 전 사진 촬영 */}
-            <PhotoSection
-              title="점검 전 사진 (전/후/좌/우 + 내부)"
-              photos={beforePhotos}
-              onPhotoChange={handleBeforePhotoChange}
-            />
+            {/* 반납상태 모드: 점검 전 사진 */}
+            {isReturnMode && (
+              <>
+                <ExteriorPhotoSection
+                  title="점검 전 외관 사진"
+                  photos={beforeExteriorPhotos}
+                  onPhotoChange={handleBeforeExteriorPhotoChange}
+                />
+                <InteriorMultiPhotoSection
+                  title="점검 전 내부 사진 (발매트, 컵홀더)"
+                  photos={beforeInteriorPhotos}
+                  onPhotosChange={setBeforeInteriorPhotos}
+                />
+              </>
+            )}
 
-            {/* 조치 섹션 */}
+            {/* 세차점검 모드: 조치 섹션 */}
+            {isCarwashMode && (
             <div className="space-y-4">
               <h3 className="text-base font-semibold text-gray-800 border-b border-gray-200 pb-2">조치 사항</h3>
 
@@ -745,13 +784,19 @@ function InspectionForm() {
                 </div>
               </div>
 
-              {/* 점검 후 사진 촬영 */}
-              <PhotoSection
-                title="점검 후 사진 (전/후/좌/우 + 내부)"
-                photos={afterPhotos}
-                onPhotoChange={handleAfterPhotoChange}
+              {/* 점검 후 사진 */}
+              <ExteriorPhotoSection
+                title="점검 후 외관 사진"
+                photos={afterExteriorPhotos}
+                onPhotoChange={handleAfterExteriorPhotoChange}
+              />
+              <InteriorMultiPhotoSection
+                title="점검 후 내부 사진 (발매트, 컵홀더)"
+                photos={afterInteriorPhotos}
+                onPhotosChange={setAfterInteriorPhotos}
               />
             </div>
+            )}
 
             {/* 특이사항 */}
             <div>
