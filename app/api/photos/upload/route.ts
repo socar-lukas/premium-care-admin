@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      
+
       // 파일 유효성 검사
       if (!file.type.startsWith('image/')) {
         continue;
@@ -78,11 +78,10 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // 파일 정보 준비
+      // 파일 정보 준비 - 항상 고유한 파일명 생성
       const fileExtension = path.extname(file.name);
-      const cloudinaryFileName = files.length > 1 
-        ? `${baseFileName}_${i + 1}${fileExtension}`
-        : `${baseFileName}${fileExtension}`;
+      const uniqueId = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const cloudinaryFileName = `${baseFileName}_${uniqueId}${fileExtension}`;
 
       // 파일을 Buffer로 변환
       const bytes = await file.arrayBuffer();
