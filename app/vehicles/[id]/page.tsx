@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import SocarLogo from '@/components/SocarLogo';
+import BlackLabelLogo from '@/components/BlackLabelLogo';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Vehicle {
@@ -214,9 +214,9 @@ export default function VehicleDetailPage({
 
             {/* 데스크톱: 로고 및 타이틀 */}
             <Link href="/" className="hidden md:flex items-center gap-3">
-              <SocarLogo />
+              <BlackLabelLogo />
               <span className="text-lg font-bold text-gray-900">
-                Socar Premium Admin
+                BlackLabel Admin
               </span>
             </Link>
 

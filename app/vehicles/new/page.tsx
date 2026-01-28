@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import SocarLogo from '@/components/SocarLogo';
+import BlackLabelLogo from '@/components/BlackLabelLogo';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function NewVehiclePage() {
@@ -85,9 +85,9 @@ export default function NewVehiclePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-14 md:h-16 items-center">
             <Link href="/vehicles" className="flex items-center gap-3">
-              <SocarLogo />
+              <BlackLabelLogo />
               <span className="text-base md:text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                Socar Premium Admin
+                BlackLabel Admin
               </span>
             </Link>
             <Link

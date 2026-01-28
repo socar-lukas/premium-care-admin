@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import SocarLogo from '@/components/SocarLogo';
+import BlackLabelLogo from '@/components/BlackLabelLogo';
 
 interface InspectionDetails {
   contamination?: string;
@@ -128,8 +128,8 @@ export default function InspectionDetailPage({
         <div className="max-w-2xl mx-auto px-4">
           <div className="flex justify-between h-14 items-center">
             <Link href="/" className="flex items-center gap-2">
-              <SocarLogo />
-              <span className="text-sm font-bold text-gray-900">Premium Admin</span>
+              <BlackLabelLogo />
+              <span className="text-sm font-bold text-gray-900">BlackLabel Admin</span>
             </Link>
             <Link
               href={`/vehicles/${inspection.vehicle.id}`}

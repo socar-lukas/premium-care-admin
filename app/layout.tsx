@@ -6,7 +6,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Socar Premium Admin",
+  title: "BlackLabel Admin",
   description: "차량 세차 및 관리 서비스 어드민 시스템",
 };
 

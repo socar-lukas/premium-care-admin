@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import SocarLogo from '@/components/SocarLogo';
+import BlackLabelLogo from '@/components/BlackLabelLogo';
 
 interface Vehicle {
   id: string;
@@ -318,9 +318,9 @@ function MaintenanceForm() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-14 md:h-16 items-center">
             <Link href="/" className="flex items-center gap-3">
-              <SocarLogo />
+              <BlackLabelLogo />
               <span className="text-base md:text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                Socar Premium Admin
+                BlackLabel Admin
               </span>
             </Link>
             <Link
