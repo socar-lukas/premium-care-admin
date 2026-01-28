@@ -236,7 +236,8 @@ function InspectionForm() {
 
       if (isReturnMode) {
         // 반납상태: 점검 전 외관 사진
-        Object.entries(beforeExteriorPhotos).forEach(([type, files]) => {
+        (['front', 'rear', 'left', 'right'] as const).forEach(type => {
+          const files = beforeExteriorPhotos[type];
           files.forEach((file, index) => {
             allPhotos.push({ type: `before_${type}_${index + 1}`, file });
           });
@@ -247,7 +248,8 @@ function InspectionForm() {
         });
       } else {
         // 세차점검: 점검 후 외관 사진
-        Object.entries(afterExteriorPhotos).forEach(([type, files]) => {
+        (['front', 'rear', 'left', 'right'] as const).forEach(type => {
+          const files = afterExteriorPhotos[type];
           files.forEach((file, index) => {
             allPhotos.push({ type: `after_${type}_${index + 1}`, file });
           });

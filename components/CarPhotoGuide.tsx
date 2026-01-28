@@ -140,30 +140,18 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [compressing, setCompressing] = useState(false);
-  // 이미 처리된 원본 파일명 추적 (압축 후 파일명이 변경되므로 원본 기준)
-  const processedBaseNamesRef = useRef<Set<string>>(new Set());
-
-  // photos 배열의 고유 키 생성 (파일 내용 기반)
-  const photosKey = photos.map(f => `${f.name}-${f.size}`).join('|');
 
   // photos prop이 변경되면 preview URLs 동기화
   useEffect(() => {
-    // photos에서 새 preview URLs 생성
     const newUrls = photos.map(file => URL.createObjectURL(file));
     setPreviewUrls(newUrls);
 
-    // cleanup - 이 effect가 다시 실행되거나 컴포넌트가 unmount될 때만 정리
     return () => {
       newUrls.forEach(url => URL.revokeObjectURL(url));
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photosKey]);
-
-  // 파일의 기본 이름 추출 (확장자 제외)
-  const getBaseName = (fileName: string) => fileName.replace(/\.[^/.]+$/, '');
+  }, [photos]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // 압축 중이면 무시
     if (compressing) {
       if (inputRef.current) inputRef.current.value = '';
       return;
@@ -175,36 +163,19 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
       return;
     }
 
-    // 이미 추가된 파일의 기본 이름들 (압축 후 .jpg로 변경되므로 기본 이름으로 비교)
-    const existingBaseNames = new Set(photos.map(f => getBaseName(f.name)));
-
-    // 중복 파일 필터링 (파일명 기준)
-    const uniqueFiles = files.filter(file => {
-      const baseName = getBaseName(file.name);
-      // 이미 photos에 있거나, 이번 세션에서 처리된 파일은 제외
-      if (existingBaseNames.has(baseName) || processedBaseNamesRef.current.has(baseName)) {
-        return false;
-      }
-      processedBaseNamesRef.current.add(baseName);
-      return true;
-    });
-
-    if (uniqueFiles.length === 0) {
-      if (inputRef.current) inputRef.current.value = '';
-      return;
-    }
-
     setCompressing(true);
     try {
-      // 이미지 압축 (병렬 처리)
-      const compressedFiles = await compressImages(uniqueFiles);
-      const newPhotos = [...photos, ...compressedFiles];
-      onPhotosChange(newPhotos);
+      // 각 파일을 개별적으로 압축 (순차 처리로 변경)
+      const compressedFiles: File[] = [];
+      for (const file of files) {
+        const [compressed] = await compressImages([file]);
+        compressedFiles.push(compressed);
+      }
+      // 기존 사진에 새 사진 추가
+      onPhotosChange([...photos, ...compressedFiles]);
     } catch (error) {
       console.error('Error compressing images:', error);
-      // 압축 실패 시 원본 사용
-      const newPhotos = [...photos, ...uniqueFiles];
-      onPhotosChange(newPhotos);
+      onPhotosChange([...photos, ...files]);
     } finally {
       setCompressing(false);
     }
@@ -215,12 +186,6 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
   };
 
   const handleRemove = (index: number) => {
-    const removedFile = photos[index];
-    if (removedFile) {
-      // 압축된 파일명에서 기본 이름 추출해서 제거
-      const baseName = getBaseName(removedFile.name);
-      processedBaseNamesRef.current.delete(baseName);
-    }
     const newPhotos = photos.filter((_, i) => i !== index);
     onPhotosChange(newPhotos);
   };
@@ -253,12 +218,13 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
                 +{photoCount - 1}
               </div>
             )}
-            {/* 삭제/추가 버튼 */}
+            {/* 추가/삭제 버튼 */}
             <div className="absolute top-1 right-1 flex gap-1">
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
                 className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center shadow text-xs"
+                title="사진 추가"
               >
                 +
               </button>
@@ -266,6 +232,7 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
                 type="button"
                 onClick={() => handleRemove(0)}
                 className="w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow"
+                title="삭제"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -405,30 +372,18 @@ export function InteriorMultiPhotoSection({ title, photos, onPhotosChange, requi
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [compressing, setCompressing] = useState(false);
-  // 이미 처리된 원본 파일명 추적 (압축 후 파일명이 변경되므로 원본 기준)
-  const processedBaseNamesRef = useRef<Set<string>>(new Set());
-
-  // photos 배열의 고유 키 생성 (파일 내용 기반)
-  const photosKey = photos.map(f => `${f.name}-${f.size}`).join('|');
 
   // photos prop이 변경되면 preview URLs 동기화
   useEffect(() => {
-    // photos에서 새 preview URLs 생성
     const newUrls = photos.map(file => URL.createObjectURL(file));
     setPreviewUrls(newUrls);
 
-    // cleanup - 이 effect가 다시 실행되거나 컴포넌트가 unmount될 때만 정리
     return () => {
       newUrls.forEach(url => URL.revokeObjectURL(url));
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photosKey]);
-
-  // 파일의 기본 이름 추출 (확장자 제외)
-  const getBaseName = (fileName: string) => fileName.replace(/\.[^/.]+$/, '');
+  }, [photos]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // 압축 중이면 무시
     if (compressing) {
       if (inputRef.current) inputRef.current.value = '';
       return;
@@ -440,33 +395,15 @@ export function InteriorMultiPhotoSection({ title, photos, onPhotosChange, requi
       return;
     }
 
-    // 이미 추가된 파일의 기본 이름들 (압축 후 .jpg로 변경되므로 기본 이름으로 비교)
-    const existingBaseNames = new Set(photos.map(f => getBaseName(f.name)));
-
-    // 중복 파일 필터링 (파일명 기준)
-    const uniqueFiles = files.filter(file => {
-      const baseName = getBaseName(file.name);
-      // 이미 photos에 있거나, 이번 세션에서 처리된 파일은 제외
-      if (existingBaseNames.has(baseName) || processedBaseNamesRef.current.has(baseName)) {
-        return false;
-      }
-      processedBaseNamesRef.current.add(baseName);
-      return true;
-    });
-
-    if (uniqueFiles.length === 0) {
-      if (inputRef.current) inputRef.current.value = '';
-      return;
-    }
-
     setCompressing(true);
     try {
-      const compressedFiles = await compressImages(uniqueFiles);
+      const compressedFiles = await compressImages(files);
+      // 기존 사진에 새 사진 추가
       const newPhotos = [...photos, ...compressedFiles];
       onPhotosChange(newPhotos);
     } catch (error) {
       console.error('Error compressing images:', error);
-      const newPhotos = [...photos, ...uniqueFiles];
+      const newPhotos = [...photos, ...files];
       onPhotosChange(newPhotos);
     } finally {
       setCompressing(false);
@@ -478,12 +415,6 @@ export function InteriorMultiPhotoSection({ title, photos, onPhotosChange, requi
   };
 
   const handleRemove = (index: number) => {
-    const removedFile = photos[index];
-    if (removedFile) {
-      // 압축된 파일명에서 기본 이름 추출해서 제거
-      const baseName = getBaseName(removedFile.name);
-      processedBaseNamesRef.current.delete(baseName);
-    }
     const newPhotos = photos.filter((_, i) => i !== index);
     onPhotosChange(newPhotos);
   };

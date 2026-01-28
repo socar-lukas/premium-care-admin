@@ -11,12 +11,16 @@ export async function compressImage(file: File): Promise<File> {
     return file;
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const img = new Image();
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
+    const objectUrl = URL.createObjectURL(file);
 
     img.onload = () => {
+      // Object URL 정리
+      URL.revokeObjectURL(objectUrl);
+
       let { width, height } = img;
 
       // 비율 유지하며 리사이즈
@@ -45,8 +49,10 @@ export async function compressImage(file: File): Promise<File> {
       canvas.toBlob(
         (blob) => {
           if (blob) {
-            // 원본 파일명에서 확장자 제거하고 .jpg 추가
-            const fileName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
+            // 고유한 파일명 생성 (원본명 + 타임스탬프 + 랜덤)
+            const baseName = file.name.replace(/\.[^/.]+$/, '');
+            const uniqueId = `${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+            const fileName = `${baseName}_${uniqueId}.jpg`;
             const compressedFile = new File([blob], fileName, {
               type: 'image/jpeg',
               lastModified: Date.now(),
@@ -62,10 +68,11 @@ export async function compressImage(file: File): Promise<File> {
     };
 
     img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
       resolve(file); // 에러 시 원본 반환
     };
 
-    img.src = URL.createObjectURL(file);
+    img.src = objectUrl;
   });
 }
 
