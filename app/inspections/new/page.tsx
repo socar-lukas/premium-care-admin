@@ -373,7 +373,7 @@ function InspectionForm() {
               </svg>
             </div>
             <div>
-              <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">세차·점검 기록 등록</h1>
+              <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">세차·점검 등록</h1>
               <p className="text-xs text-gray-500">시작: {startTimeDisplay || '-'}</p>
             </div>
           </div>

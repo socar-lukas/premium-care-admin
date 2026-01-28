@@ -343,7 +343,7 @@ function MaintenanceForm() {
               </svg>
             </div>
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900">소모품·경정비 기록 등록</h1>
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">소모품·경정비 등록</h1>
               <p className="text-xs text-gray-500">시작: {startTimeDisplay || '-'}</p>
             </div>
           </div>

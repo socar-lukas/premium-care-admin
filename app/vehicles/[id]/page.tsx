@@ -232,13 +232,13 @@ export default function VehicleDetailPage({
                 href={`/inspections/new?vehicleId=${vehicle.id}&vehicleNumber=${encodeURIComponent(vehicle.vehicleNumber)}&manufacturer=${encodeURIComponent(vehicle.manufacturer || '')}&model=${encodeURIComponent(vehicle.model || '')}`}
                 className="px-4 py-2 text-white rounded-md text-sm font-medium transition-all duration-200" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}
               >
-                세차·점검 기록 등록
+                세차·점검 등록
               </Link>
               <Link
                 href={`/maintenance/new?vehicleId=${vehicle.id}&vehicleNumber=${encodeURIComponent(vehicle.vehicleNumber)}&manufacturer=${encodeURIComponent(vehicle.manufacturer || '')}&model=${encodeURIComponent(vehicle.model || '')}`}
                 className="px-4 py-2 text-white rounded-md text-sm font-medium transition-all duration-200" style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}
               >
-                소모품·경정비 기록 등록
+                소모품·경정비 등록
               </Link>
             </div>
 

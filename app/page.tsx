@@ -486,14 +486,14 @@ export default function Home() {
                 href="/inspections/new"
                 className="gradient-button-primary px-5 py-2 text-white rounded-lg text-sm font-semibold shadow-lg"
               >
-                세차·점검 기록 등록
+                세차·점검 등록
               </Link>
               <Link
                 href="/maintenance/new"
                 className="px-4 py-2 text-white rounded-lg text-sm font-semibold shadow-lg"
                 style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' }}
               >
-                소모품·경정비 기록 등록
+                소모품·경정비 등록
               </Link>
               {isAdmin ? (
                 <button
@@ -598,7 +598,7 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
-                <h3 className="text-xs font-semibold text-gray-600">점검 필요</h3>
+                <h3 className="text-xs font-semibold text-gray-600">D+1 점검 필요</h3>
               </div>
               <p className="text-2xl md:text-3xl font-bold" style={{ color: '#DC2626' }}>
                 {reservationStats.needsInspectionCount}
@@ -668,7 +668,7 @@ export default function Home() {
                       color: activeFilter === 'inUse' ? '#16A34A' : activeFilter === 'upcoming' ? '#EA580C' : '#DC2626'
                     }}
                   >
-                    <span>{activeFilter === 'inUse' ? '운행중' : activeFilter === 'upcoming' ? 'D+1 예약' : '점검 필요'}</span>
+                    <span>{activeFilter === 'inUse' ? '운행중' : activeFilter === 'upcoming' ? 'D+1 예약' : 'D+1 점검 필요'}</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
