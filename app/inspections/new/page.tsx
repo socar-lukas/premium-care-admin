@@ -206,7 +206,7 @@ function InspectionForm() {
               battery,
               wiperWasher,
               warningLights: warningLights.map(item =>
-                item === '기타' && warningLightOther ? `기타: ${warningLightOther}` : item
+                item === '기타(주관식)' && warningLightOther ? `기타: ${warningLightOther}` : item
               ),
             },
         // 사진이 있으면 기본 영역 생성
@@ -784,13 +784,13 @@ function InspectionForm() {
               <div className="pl-1">
                 <label className="block text-sm text-gray-600 mb-2">경고등</label>
                 <div className="flex flex-wrap gap-1.5">
-                  {['없음', '엔진', '공기압', '주유', '라이트', '기타'].map((item) => (
+                  {['없음', '엔진', '공기압', '주유', '라이트', '기타(주관식)'].map((item) => (
                     <button
                       key={item}
                       type="button"
                       onClick={() => {
                         toggleMultiSelect(item, warningLights, setWarningLights);
-                        if (item === '기타' && warningLights.includes('기타')) {
+                        if (item === '기타(주관식)' && warningLights.includes('기타(주관식)')) {
                           setWarningLightOther('');
                         }
                       }}
@@ -804,7 +804,7 @@ function InspectionForm() {
                     </button>
                   ))}
                 </div>
-                {warningLights.includes('기타') && (
+                {warningLights.includes('기타(주관식)') && (
                   <input
                     type="text"
                     value={warningLightOther}
