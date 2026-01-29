@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BlackLabel Admin 사용 가이드</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .cover {
+      text-align: center;
+      padding: 80px 20px;
+      background: linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%);
+      border-radius: 16px;
+      margin-bottom: 40px;
+      page-break-after: always;
+    }
+
+    .cover h1 {
+      font-size: 36px;
+      margin-bottom: 10px;
+      background: linear-gradient(to right, #B8860B, #DAA520, #B8860B);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .cover .subtitle {
+      font-size: 20px;
+      color: #666;
+      margin-bottom: 40px;
+    }
+
+    .cover .version {
+      font-size: 14px;
+      color: #888;
+    }
+
+    h2 {
+      color: #1a1a1a;
+      border-bottom: 3px solid #0078FF;
+      padding-bottom: 10px;
+      margin-top: 40px;
+      page-break-before: always;
+    }
+
+    h2:first-of-type {
+      page-break-before: avoid;
+    }
+
+    h3 {
+      color: #333;
+      margin-top: 25px;
+      background: #f0f7ff;
+      padding: 10px 15px;
+      border-left: 4px solid #0078FF;
+    }
+
+    .screenshot {
+      text-align: center;
+      margin: 20px 0;
+      page-break-inside: avoid;
+    }
+
+    .screenshot img {
+      max-width: 350px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .screenshot.desktop img {
+      max-width: 100%;
+    }
+
+    .screenshot figcaption {
+      font-size: 12px;
+      color: #666;
+      margin-top: 8px;
+    }
+
+    .tip {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .tip strong {
+      color: #856404;
+    }
+
+    .warning {
+      background: #f8d7da;
+      border-left: 4px solid #dc3545;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .warning strong {
+      color: #721c24;
+    }
+
+    .step {
+      background: white;
+      padding: 20px;
+      margin: 15px 0;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      page-break-inside: avoid;
+    }
+
+    .step-number {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      background: #0078FF;
+      color: white;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 28px;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+
+    ul, ol {
+      padding-left: 25px;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    .button-guide {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      margin: 2px;
+    }
+
+    .btn-blue {
+      background: linear-gradient(135deg, #0078FF 0%, #005AFF 100%);
+      color: white;
+    }
+
+    .btn-green {
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      color: white;
+    }
+
+    .btn-orange {
+      background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+      color: white;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background: #f8f9fa;
+      font-weight: 600;
+    }
+
+    .toc {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .toc h3 {
+      margin-top: 0;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .toc ol {
+      list-style: none;
+      padding: 0;
+    }
+
+    .toc li {
+      padding: 8px 0;
+      border-bottom: 1px dashed #eee;
+    }
+
+    .toc a {
+      color: #0078FF;
+      text-decoration: none;
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .cover {
+        background: linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 표지 -->
+  <div class="cover">
+    <h1>BlackLabel Admin</h1>
+    <p class="subtitle">현장 담당자 사용 가이드</p>
+    <p class="version">버전 1.0 | 2026년 1월</p>
+  </div>
+
+  <!-- 목차 -->
+  <div class="toc">
+    <h3>목차</h3>
+    <ol>
+      <li><a href="#intro">1. 소개</a></li>
+      <li><a href="#dashboard">2. 대시보드 (메인 화면)</a></li>
+      <li><a href="#return">3. 반납상태 등록</a></li>
+      <li><a href="#carwash">4. 세차·점검 등록</a></li>
+      <li><a href="#maintenance">5. 소모품·경정비 등록</a></li>
+      <li><a href="#vehicle-detail">6. 차량 상세보기</a></li>
+      <li><a href="#tips">7. 자주 묻는 질문</a></li>
+    </ol>
+  </div>
+
+  <!-- 1. 소개 -->
+  <h2 id="intro">1. 소개</h2>
+
+  <p><strong>BlackLabel Admin</strong>은 차량 관리 현장에서 사용하는 점검 기록 시스템입니다.</p>
+
+  <h3>주요 기능</h3>
+  <ul>
+    <li><strong>반납상태 등록</strong> - 고객 반납 시 차량 상태 기록</li>
+    <li><strong>세차·점검 등록</strong> - 세차 후 점검 완료 기록</li>
+    <li><strong>소모품·경정비 등록</strong> - 소모품 교체, 경정비, 사고수리 기록</li>
+    <li><strong>차량 문열기</strong> - 옥스트라 바로가기</li>
+  </ul>
+
+  <h3>접속 방법</h3>
+  <p>웹 브라우저에서 <strong>blacklabel.vercel.app</strong>에 접속합니다.</p>
+
+  <div class="tip">
+    <strong>TIP:</strong> 스마트폰 홈 화면에 추가하면 앱처럼 편리하게 사용할 수 있습니다.
+  </div>
+
+  <!-- 2. 대시보드 -->
+  <h2 id="dashboard">2. 대시보드 (메인 화면)</h2>
+
+  <figure class="screenshot">
+    <img src="01_dashboard.png" alt="대시보드 화면">
+    <figcaption>대시보드 메인 화면 (모바일)</figcaption>
+  </figure>
+
+  <h3>화면 구성</h3>
+
+  <div class="step">
+    <span class="step-number">1</span>
+    <strong>상단 통계 카드</strong>
+    <ul>
+      <li><strong>운행중</strong> - 현재 고객이 이용 중인 차량 수</li>
+      <li><strong>D+1 예약</strong> - 24시간 내 예약 시작되는 차량 수</li>
+      <li><strong>점검필요</strong> - 세차·점검이 필요한 차량 수 (9시간 내 세차점검 기록 없음)</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <span class="step-number">2</span>
+    <strong>액션 버튼</strong>
+    <ul>
+      <li><span class="button-guide btn-blue">반납상태 등록</span> - 고객 반납 시 상태 기록</li>
+      <li><span class="button-guide btn-green">세차·점검 등록</span> - 세차 후 점검 완료 기록</li>
+      <li><span class="button-guide btn-orange">소모품·경정비</span> - 소모품/경정비/사고수리 기록</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <span class="step-number">3</span>
+    <strong>차량 목록</strong>
+    <ul>
+      <li>등록된 모든 차량을 확인할 수 있습니다</li>
+      <li>차량을 클릭하면 상세 페이지로 이동합니다</li>
+      <li>상태 아이콘으로 운행중/대기중/점검필요 여부를 확인할 수 있습니다</li>
+    </ul>
+  </div>
+
+  <figure class="screenshot desktop">
+    <img src="06_dashboard_desktop.png" alt="대시보드 화면 (데스크톱)">
+    <figcaption>대시보드 화면 (데스크톱)</figcaption>
+  </figure>
+
+  <!-- 3. 반납상태 등록 -->
+  <h2 id="return">3. 반납상태 등록</h2>
+
+  <p>고객이 차량을 반납했을 때 차량 상태를 기록합니다.</p>
+
+  <figure class="screenshot">
+    <img src="02_return_status_form.png" alt="반납상태 등록 화면">
+    <figcaption>반납상태 등록 화면</figcaption>
+  </figure>
+
+  <h3>입력 항목</h3>
+
+  <div class="step">
+    <span class="step-number">1</span>
+    <strong>차량번호 선택</strong>
+    <p>차량번호 4자리 이상 입력하면 자동으로 검색됩니다.</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">2</span>
+    <strong>담당자 선택</strong>
+    <p>본인 이름을 선택하거나 새로 입력합니다.</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">3</span>
+    <strong>차량 반납 상태 점검</strong>
+    <table>
+      <tr>
+        <th>항목</th>
+        <th>선택값</th>
+      </tr>
+      <tr>
+        <td>반납차량 오염도</td>
+        <td>상 / 중 / 하</td>
+      </tr>
+      <tr>
+        <td>외관이상 유형</td>
+        <td>이상없음 / 경미(운행가능) / 파손(운행불가)</td>
+      </tr>
+      <tr>
+        <td>타이어 상태</td>
+        <td>각 타이어별: 정상 / 경미 / 심각</td>
+      </tr>
+      <tr>
+        <td>내부 오염 위치</td>
+        <td>운전석, 보조석, 뒷좌석, 트렁크 (복수 선택)</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="step">
+    <span class="step-number">4</span>
+    <strong>점검 전 외관 사진</strong>
+    <p>전면 / 우측 / 후면 / 좌측 - 4방향 모두 촬영해야 합니다.</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">5</span>
+    <strong>점검 전 내부 사진</strong>
+    <p>발매트, 컵홀더 등 오염 부위를 촬영합니다.</p>
+  </div>
+
+  <div class="warning">
+    <strong>주의:</strong> 모든 외관 사진(전/우/후/좌)과 내부 사진을 등록해야 저장 버튼이 활성화됩니다.
+  </div>
+
+  <!-- 4. 세차·점검 등록 -->
+  <h2 id="carwash">4. 세차·점검 등록</h2>
+
+  <p>세차 완료 후 점검 결과를 기록합니다.</p>
+
+  <figure class="screenshot">
+    <img src="03_carwash_form.png" alt="세차·점검 등록 화면">
+    <figcaption>세차·점검 등록 화면</figcaption>
+  </figure>
+
+  <h3>입력 항목</h3>
+
+  <div class="step">
+    <span class="step-number">1</span>
+    <strong>조치 사항</strong>
+    <table>
+      <tr>
+        <th>항목</th>
+        <th>선택값</th>
+      </tr>
+      <tr>
+        <td>세차</td>
+        <td>정밀세차 / 약식세차</td>
+      </tr>
+      <tr>
+        <td>배터리 상태</td>
+        <td>정상 / 전압낮음 / 충전필요 / 교체필요</td>
+      </tr>
+      <tr>
+        <td>와이퍼/워셔액</td>
+        <td>와이퍼 불량, 워셔액 부족 (복수 선택)</td>
+      </tr>
+      <tr>
+        <td>경고등</td>
+        <td>엔진, 배터리, 타이어, 기타 (복수 선택)</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="step">
+    <span class="step-number">2</span>
+    <strong>점검 후 외관 사진</strong>
+    <p>세차 완료 후 전면 / 우측 / 후면 / 좌측 4방향 촬영</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">3</span>
+    <strong>점검 후 내부 사진</strong>
+    <p>세차 완료 후 실내 상태 촬영</p>
+  </div>
+
+  <div class="tip">
+    <strong>TIP:</strong> 세차점검 기록이 있어야 "점검필요" 상태가 해제됩니다.
+  </div>
+
+  <!-- 5. 소모품·경정비 등록 -->
+  <h2 id="maintenance">5. 소모품·경정비 등록</h2>
+
+  <p>소모품 교체, 경정비, 사고수리 작업을 기록합니다.</p>
+
+  <figure class="screenshot">
+    <img src="04_maintenance_form.png" alt="소모품·경정비 등록 화면">
+    <figcaption>소모품·경정비 등록 화면</figcaption>
+  </figure>
+
+  <h3>작업 항목</h3>
+
+  <div class="step">
+    <span class="step-number">1</span>
+    <strong>소모품 교체</strong>
+    <p>엔진오일, 에어컨필터, 타이어, 배터리, 와이퍼, 브레이크패드 등</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">2</span>
+    <strong>경정비</strong>
+    <p>얼라인먼트, 광택/코팅, 흠집제거, 덴트수리, 내부크리닝, 시트수리, 실내소독 등</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">3</span>
+    <strong>사고수리</strong>
+    <p>범퍼, 휀다, 도어, 보닛, 트렁크, 루프, 미러, 유리, 라이트, 휠 등</p>
+  </div>
+
+  <!-- 6. 차량 상세보기 -->
+  <h2 id="vehicle-detail">6. 차량 상세보기</h2>
+
+  <p>차량을 클릭하면 상세 페이지에서 다음 정보를 확인할 수 있습니다.</p>
+
+  <h3>주요 기능</h3>
+
+  <div class="step">
+    <span class="step-number">1</span>
+    <strong>차량 문열기</strong>
+    <p>상단의 "문열기" 버튼을 클릭하면 옥스트라로 바로 이동합니다.</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">2</span>
+    <strong>반납상태 기록</strong>
+    <p>해당 차량의 반납상태 기록 목록을 확인할 수 있습니다.</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">3</span>
+    <strong>세차·점검 기록</strong>
+    <p>해당 차량의 세차·점검 기록 목록을 확인할 수 있습니다.</p>
+    <p>당월 정밀세차/약식세차 횟수도 표시됩니다.</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">4</span>
+    <strong>소모품·경정비 기록</strong>
+    <p>해당 차량의 소모품/경정비/사고수리 기록을 확인할 수 있습니다.</p>
+  </div>
+
+  <!-- 7. 자주 묻는 질문 -->
+  <h2 id="tips">7. 자주 묻는 질문</h2>
+
+  <div class="step">
+    <strong>Q: 사진이 등록되지 않아요</strong>
+    <p>A: 외관 사진은 전면/우측/후면/좌측 4장 모두 등록해야 합니다. 내부 사진도 1장 이상 등록해야 저장 버튼이 활성화됩니다.</p>
+  </div>
+
+  <div class="step">
+    <strong>Q: 담당자 이름이 목록에 없어요</strong>
+    <p>A: 직접 이름을 입력하고 "추가" 버튼을 누르면 목록에 추가됩니다.</p>
+  </div>
+
+  <div class="step">
+    <strong>Q: 잘못 등록한 기록을 삭제하고 싶어요</strong>
+    <p>A: 관리자 권한이 필요합니다. 관리자에게 문의해주세요.</p>
+  </div>
+
+  <div class="step">
+    <strong>Q: 차량 목록에서 특정 차량을 찾기 어려워요</strong>
+    <p>A: 차량 목록 페이지에서 검색 기능을 이용하거나, 대시보드의 통계 카드를 클릭하면 해당 상태의 차량만 필터링됩니다.</p>
+  </div>
+
+  <hr style="margin-top: 50px;">
+  <p style="text-align: center; color: #888; font-size: 12px;">
+    BlackLabel Admin v1.0 | 2026년 1월<br>
+    문의: 관리자에게 연락
+  </p>
+
+</body>
+</html>

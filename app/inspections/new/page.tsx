@@ -82,6 +82,7 @@ function InspectionForm() {
   const [battery, setBattery] = useState<string>(''); // 배터리 상태
   const [wiperWasher, setWiperWasher] = useState<string[]>([]); // 와이퍼/워셔액
   const [warningLights, setWarningLights] = useState<string[]>([]); // 경고등
+  const [warningLightOther, setWarningLightOther] = useState(''); // 경고등 기타 내용
   const [memo, setMemo] = useState(''); // 특이사항
 
   // 외관 사진 (전/후/좌/우만)
@@ -204,7 +205,9 @@ function InspectionForm() {
               carWash,
               battery,
               wiperWasher,
-              warningLights,
+              warningLights: warningLights.map(item =>
+                item === '기타' && warningLightOther ? `기타: ${warningLightOther}` : item
+              ),
             },
         // 사진이 있으면 기본 영역 생성
         areas: hasPhotos ? [
@@ -781,11 +784,16 @@ function InspectionForm() {
               <div className="pl-1">
                 <label className="block text-sm text-gray-600 mb-2">경고등</label>
                 <div className="flex flex-wrap gap-1.5">
-                  {['없음', '엔진', '공기압', '주유', '라이트'].map((item) => (
+                  {['없음', '엔진', '공기압', '주유', '라이트', '기타'].map((item) => (
                     <button
                       key={item}
                       type="button"
-                      onClick={() => toggleMultiSelect(item, warningLights, setWarningLights)}
+                      onClick={() => {
+                        toggleMultiSelect(item, warningLights, setWarningLights);
+                        if (item === '기타' && warningLights.includes('기타')) {
+                          setWarningLightOther('');
+                        }
+                      }}
                       className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all active:scale-95 ${
                         warningLights.includes(item)
                           ? item === '없음' ? 'bg-green-500 text-white border-green-500' : 'bg-red-500 text-white border-red-500'
@@ -796,6 +804,15 @@ function InspectionForm() {
                     </button>
                   ))}
                 </div>
+                {warningLights.includes('기타') && (
+                  <input
+                    type="text"
+                    value={warningLightOther}
+                    onChange={(e) => setWarningLightOther(e.target.value)}
+                    placeholder="기타 경고등 내용을 입력하세요"
+                    className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                )}
               </div>
 
               {/* 점검 후 사진 */}
