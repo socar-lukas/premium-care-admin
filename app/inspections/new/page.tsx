@@ -741,9 +741,8 @@ function InspectionForm() {
                 <label className="block text-sm text-gray-600 mb-2">배터리 상태 <span className="text-red-500">*</span></label>
                 <div className="flex flex-wrap gap-1.5">
                   {[
-                    { value: '정상', color: 'green' as const },
-                    { value: '전압낮음', color: 'blue' as const },
-                    { value: '방전', color: 'red' as const },
+                    { value: '시동정상', color: 'green' as const },
+                    { value: '시동불량', color: 'red' as const },
                   ].map((item) => (
                     <SelectButton
                       key={item.value}
