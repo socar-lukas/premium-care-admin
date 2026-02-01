@@ -90,8 +90,9 @@ export async function POST(request: NextRequest) {
       const buffer = Buffer.from(bytes);
       const mimeType = file.type || 'image/jpeg';
 
-      // Cloudinary에 업로드
-      const inspectionDateStr = inspectionDateObj.toISOString().split('T')[0];
+      // Cloudinary에 업로드 - 한국 시간(KST) 기준 날짜
+      const kstDate = new Date(inspectionDateObj.getTime() + 9 * 60 * 60 * 1000);
+      const inspectionDateStr = kstDate.toISOString().split('T')[0];
       const cloudinaryResult = await uploadBufferToCloudinary(
         buffer,
         cloudinaryFileName,
