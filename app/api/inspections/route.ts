@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { appendInspectionRecord } from '@/lib/google-sheets';
+import { appendReturnInspection, appendCarwashInspection } from '@/lib/google-sheets';
 import { z } from 'zod';
 
 const inspectionSchema = z.object({
@@ -163,27 +163,41 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Google Sheets 백업 (필수)
+    // Google Sheets 백업 (필수) - 점검유형에 따라 다른 시트에 저장
     const details = data.details as Record<string, unknown> | undefined;
-    await appendInspectionRecord({
-      inspectionId: inspection.id,
-      date: new Date(data.inspectionDate).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
-      vehicleNumber: vehicle.vehicleNumber,
-      ownerName: vehicle.ownerName,
-      inspectionType: data.inspectionType,
-      overallStatus: data.overallStatus,
-      inspector: data.inspector || '',
-      contamination: details?.contamination as string | undefined,
-      exteriorDamage: details?.exteriorDamage as string[] | undefined,
-      tires: details?.tires as Record<string, string> | undefined,
-      interiorContamination: details?.interiorContamination as string[] | undefined,
-      carWash: details?.carWash as string | undefined,
-      battery: details?.battery as string | undefined,
-      wiperWasher: details?.wiperWasher as string[] | undefined,
-      warningLights: details?.warningLights as string[] | undefined,
-      memo: data.memo,
-      photoCount: 0, // 사진은 별도로 업로드되므로 0으로 시작
-    });
+    const dateStr = new Date(data.inspectionDate).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+
+    if (data.inspectionType === '반납상태') {
+      await appendReturnInspection({
+        inspectionId: inspection.id,
+        date: dateStr,
+        vehicleNumber: vehicle.vehicleNumber,
+        ownerName: vehicle.ownerName,
+        overallStatus: data.overallStatus,
+        inspector: data.inspector || '',
+        contamination: details?.contamination as string | undefined,
+        exteriorDamage: details?.exteriorDamage as string[] | undefined,
+        tires: details?.tires as Record<string, string> | undefined,
+        interiorContamination: details?.interiorContamination as string[] | undefined,
+        memo: data.memo,
+        photoCount: 0,
+      });
+    } else {
+      await appendCarwashInspection({
+        inspectionId: inspection.id,
+        date: dateStr,
+        vehicleNumber: vehicle.vehicleNumber,
+        ownerName: vehicle.ownerName,
+        overallStatus: data.overallStatus,
+        inspector: data.inspector || '',
+        carWash: details?.carWash as string | undefined,
+        battery: details?.battery as string | undefined,
+        wiperWasher: details?.wiperWasher as string[] | undefined,
+        warningLights: details?.warningLights as string[] | undefined,
+        memo: data.memo,
+        photoCount: 0,
+      });
+    }
 
     return NextResponse.json(inspection, { status: 201 });
   } catch (error) {

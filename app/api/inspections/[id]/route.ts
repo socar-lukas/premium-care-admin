@@ -57,8 +57,21 @@ export async function DELETE(
   }
 
   try {
+    // 점검 정보 조회 (유형 확인용)
+    const inspection = await prisma.inspection.findUnique({
+      where: { id: params.id },
+      select: { inspectionType: true },
+    });
+
+    if (!inspection) {
+      return NextResponse.json(
+        { error: 'Inspection not found' },
+        { status: 404 }
+      );
+    }
+
     // Google Sheets에 삭제 표시 (필수)
-    await markInspectionAsDeleted(params.id);
+    await markInspectionAsDeleted(params.id, inspection.inspectionType);
 
     // 데이터베이스에서 삭제
     await prisma.inspection.delete({

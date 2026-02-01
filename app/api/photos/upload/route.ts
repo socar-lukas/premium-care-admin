@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { saveUploadedFile } from '@/lib/file-upload';
 import { uploadBufferToCloudinary } from '@/lib/cloudinary';
 import { backupPhotoToGoogleDrive } from '@/lib/google-drive';
+import { updatePhotoCount } from '@/lib/google-sheets';
 import { z } from 'zod';
 import path from 'path';
 
@@ -142,6 +143,21 @@ export async function POST(request: NextRequest) {
       });
 
       uploadedPhotos.push(photo);
+    }
+
+    // 사진수 업데이트 (해당 점검의 전체 사진 수)
+    if (uploadedPhotos.length > 0) {
+      const totalPhotoCount = await prisma.inspectionPhoto.count({
+        where: {
+          inspectionArea: {
+            inspectionId: inspection.id,
+          },
+        },
+      });
+
+      // Google Sheets 사진수 업데이트 (비동기, 실패해도 진행)
+      updatePhotoCount(inspection.id, inspection.inspectionType, totalPhotoCount)
+        .catch(err => console.error('[Google Sheets] 사진수 업데이트 실패:', err));
     }
 
     return NextResponse.json(
