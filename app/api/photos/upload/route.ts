@@ -4,7 +4,7 @@ import { saveUploadedFile } from '@/lib/file-upload';
 import { uploadBufferToCloudinary } from '@/lib/cloudinary';
 import { backupPhotoToGoogleDrive } from '@/lib/google-drive';
 import { updatePhotoCount } from '@/lib/google-sheets';
-import { sendPhotosEmail, EmailAttachment } from '@/lib/email';
+// import { sendPhotosEmail, EmailAttachment } from '@/lib/email'; // 이메일 기능 임시 비활성화
 import { z } from 'zod';
 import path from 'path';
 
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     const baseFileName = `${vehicle.vehicleNumber} - ${vehicle.ownerName}, ${formatDate(inspectionDateObj)}, ${inspection.overallStatus}, ${inspection.inspectionType}${inspection.inspector ? `, ${inspection.inspector}` : ''}`;
 
     const uploadedPhotos = [];
-    const emailAttachments: EmailAttachment[] = [];
+    // const emailAttachments: EmailAttachment[] = []; // 이메일 기능 임시 비활성화
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -150,12 +150,12 @@ export async function POST(request: NextRequest) {
 
       uploadedPhotos.push(photo);
 
-      // 이메일 첨부용으로 저장
-      emailAttachments.push({
-        filename: cloudinaryFileName,
-        content: buffer,
-        contentType: mimeType,
-      });
+      // 이메일 첨부용으로 저장 (임시 비활성화)
+      // emailAttachments.push({
+      //   filename: cloudinaryFileName,
+      //   content: buffer,
+      //   contentType: mimeType,
+      // });
     }
 
     // 사진수 업데이트 (해당 점검의 전체 사진 수)
@@ -178,21 +178,21 @@ export async function POST(request: NextRequest) {
         console.error('[Google Sheets] 사진수 업데이트 실패:', err);
       }
 
-      // 이메일로 사진 백업 발송
-      if (emailAttachments.length > 0) {
-        try {
-          const emailResult = await sendPhotosEmail(
-            vehicle.vehicleNumber,
-            vehicle.ownerName,
-            inspection.inspectionType,
-            inspectionDateStr,
-            emailAttachments
-          );
-          console.log(`[Photo Upload] 이메일 발송 결과: ${emailResult}`);
-        } catch (err) {
-          console.error('[Email] 사진 이메일 발송 실패:', err);
-        }
-      }
+      // 이메일로 사진 백업 발송 (임시 비활성화)
+      // if (emailAttachments.length > 0) {
+      //   try {
+      //     const emailResult = await sendPhotosEmail(
+      //       vehicle.vehicleNumber,
+      //       vehicle.ownerName,
+      //       inspection.inspectionType,
+      //       inspectionDateStr,
+      //       emailAttachments
+      //     );
+      //     console.log(`[Photo Upload] 이메일 발송 결과: ${emailResult}`);
+      //   } catch (err) {
+      //     console.error('[Email] 사진 이메일 발송 실패:', err);
+      //   }
+      // }
     }
 
     return NextResponse.json(
