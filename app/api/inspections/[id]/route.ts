@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { markInspectionAsDeleted } from '@/lib/google-sheets';
 
 function verifyAdminPin(request: NextRequest): boolean {
   const pin = request.headers.get('x-admin-pin');
@@ -56,6 +57,10 @@ export async function DELETE(
   }
 
   try {
+    // Google Sheets에 삭제 표시 (필수)
+    await markInspectionAsDeleted(params.id);
+
+    // 데이터베이스에서 삭제
     await prisma.inspection.delete({
       where: { id: params.id },
     });

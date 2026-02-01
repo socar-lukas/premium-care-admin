@@ -163,9 +163,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Google Sheets 백업 (비동기, 실패해도 진행)
+    // Google Sheets 백업 (필수)
     const details = data.details as Record<string, unknown> | undefined;
-    appendInspectionRecord({
+    await appendInspectionRecord({
+      inspectionId: inspection.id,
       date: new Date(data.inspectionDate).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
       vehicleNumber: vehicle.vehicleNumber,
       ownerName: vehicle.ownerName,
@@ -182,7 +183,7 @@ export async function POST(request: NextRequest) {
       warningLights: details?.warningLights as string[] | undefined,
       memo: data.memo,
       photoCount: 0, // 사진은 별도로 업로드되므로 0으로 시작
-    }).catch(err => console.error('[Google Sheets] 기록 에러:', err));
+    });
 
     return NextResponse.json(inspection, { status: 201 });
   } catch (error) {

@@ -100,14 +100,14 @@ export async function POST(request: NextRequest) {
         photoPhase || undefined
       );
 
-      // Google Drive 백업 (비동기, 실패해도 진행)
-      backupPhotoToGoogleDrive(
+      // Google Drive 백업 (필수)
+      const googleDriveResult = await backupPhotoToGoogleDrive(
         buffer,
         cloudinaryFileName,
         vehicle.vehicleNumber,
         inspectionDateStr,
         mimeType
-      ).catch(err => console.error('[Google Drive] 백업 에러:', err));
+      );
 
       // 로컬 저장 (로컬 개발 환경에서만)
       const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;

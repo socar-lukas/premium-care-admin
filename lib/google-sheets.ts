@@ -18,6 +18,7 @@ function getServiceAccountAuth() {
 
 // 점검 데이터 인터페이스
 export interface InspectionRecord {
+  inspectionId: string;            // 점검 ID (삭제 시 찾기용)
   date: string;                    // 점검일시
   vehicleNumber: string;           // 차량번호
   ownerName: string;               // 소유자
@@ -71,27 +72,29 @@ export async function appendInspectionRecord(record: InspectionRecord): Promise<
 
     // 스프레드시트에 추가할 행 데이터
     const rowData = [
-      record.date,                              // A: 날짜
-      record.vehicleNumber,                     // B: 차량번호
-      record.ownerName,                         // C: 소유자
-      record.inspectionType,                    // D: 점검유형
-      record.overallStatus,                     // E: 상태
-      record.inspector || '',                   // F: 담당자
-      record.contamination || '',               // G: 오염도
-      arrayToStr(record.exteriorDamage),        // H: 외관이상
-      tiresStr,                                 // I: 타이어상태
-      arrayToStr(record.interiorContamination), // J: 내부오염
-      record.carWash || '',                     // K: 세차
-      record.battery || '',                     // L: 배터리
-      arrayToStr(record.wiperWasher),           // M: 와이퍼/워셔액
-      arrayToStr(record.warningLights),         // N: 경고등
-      record.memo || '',                        // O: 특이사항
-      record.photoCount,                        // P: 사진수
+      record.inspectionId,                        // A: 점검ID
+      record.date,                                // B: 날짜
+      record.vehicleNumber,                       // C: 차량번호
+      record.ownerName,                           // D: 소유자
+      record.inspectionType,                      // E: 점검유형
+      record.overallStatus,                       // F: 상태
+      record.inspector || '',                     // G: 담당자
+      record.contamination || '',                 // H: 오염도
+      arrayToStr(record.exteriorDamage),          // I: 외관이상
+      tiresStr,                                   // J: 타이어상태
+      arrayToStr(record.interiorContamination),   // K: 내부오염
+      record.carWash || '',                       // L: 세차
+      record.battery || '',                       // M: 배터리
+      arrayToStr(record.wiperWasher),             // N: 와이퍼/워셔액
+      arrayToStr(record.warningLights),           // O: 경고등
+      record.memo || '',                          // P: 특이사항
+      record.photoCount,                          // Q: 사진수
+      '정상',                                     // R: 상태 (정상/삭제됨)
     ];
 
     await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: `${sheetName}!A:P`,
+      range: `${sheetName}!A:R`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [rowData],
@@ -102,6 +105,71 @@ export async function appendInspectionRecord(record: InspectionRecord): Promise<
     return true;
   } catch (error) {
     console.error('[Google Sheets] 기록 실패:', error);
+    return false;
+  }
+}
+
+/**
+ * 점검 ID로 해당 행을 찾아 상태를 '삭제됨'으로 변경
+ */
+export async function markInspectionAsDeleted(inspectionId: string): Promise<boolean> {
+  const auth = getServiceAccountAuth();
+  if (!auth) {
+    console.warn('[Google Sheets] 서비스 계정 credentials 미설정');
+    return false;
+  }
+
+  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+  const sheetName = process.env.GOOGLE_SHEETS_NAME || '점검기록';
+
+  if (!spreadsheetId) {
+    console.warn('[Google Sheets] GOOGLE_SHEETS_ID 미설정');
+    return false;
+  }
+
+  try {
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    // A열(점검ID)에서 해당 ID 찾기
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!A:A`,
+    });
+
+    const rows = response.data.values;
+    if (!rows) {
+      console.warn('[Google Sheets] 데이터 없음');
+      return false;
+    }
+
+    // 점검 ID가 있는 행 번호 찾기 (1-indexed)
+    let rowIndex = -1;
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i][0] === inspectionId) {
+        rowIndex = i + 1; // 1-indexed
+        break;
+      }
+    }
+
+    if (rowIndex === -1) {
+      console.warn(`[Google Sheets] 점검 ID를 찾을 수 없음: ${inspectionId}`);
+      return false;
+    }
+
+    // R열(상태)을 '삭제됨'으로 업데이트
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${sheetName}!R${rowIndex}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [['삭제됨']],
+      },
+    });
+
+    console.log(`[Google Sheets] 삭제 표시 완료: ${inspectionId} (행 ${rowIndex})`);
+    return true;
+  } catch (error) {
+    console.error('[Google Sheets] 삭제 표시 실패:', error);
     return false;
   }
 }
@@ -122,15 +190,15 @@ export async function initializeSheetHeaders(): Promise<boolean> {
     const sheets = google.sheets({ version: 'v4', auth });
 
     const headers = [
-      '날짜', '차량번호', '소유자', '점검유형', '상태', '담당자',
+      '점검ID', '날짜', '차량번호', '소유자', '점검유형', '상태', '담당자',
       '오염도', '외관이상', '타이어상태', '내부오염',
       '세차', '배터리', '와이퍼/워셔액', '경고등',
-      '특이사항', '사진수'
+      '특이사항', '사진수', '기록상태'
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `${sheetName}!A1:P1`,
+      range: `${sheetName}!A1:R1`,
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [headers],
