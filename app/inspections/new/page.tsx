@@ -815,6 +815,38 @@ function InspectionForm() {
                 )}
               </div>
 
+              {/* 사진 촬영 가이드 */}
+              <div className="space-y-3">
+                <h3 className="text-base font-semibold text-gray-800 border-b border-gray-200 pb-2">
+                  사진 촬영 가이드
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-gray-600 text-center">외부 촬영 예시</p>
+                    <div className="relative aspect-[4/3] rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
+                      <img
+                        src="/guides/exterior_guide.png"
+                        alt="외부 촬영 가이드"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-gray-600 text-center">내부 촬영 예시</p>
+                    <div className="relative aspect-[4/3] rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
+                      <img
+                        src="/guides/interior_guide.png"
+                        alt="내부 촬영 가이드"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 text-center">
+                  위 예시처럼 차량 전체가 보이도록 촬영해주세요
+                </p>
+              </div>
+
               {/* 점검 후 사진 */}
               <ExteriorPhotoSection
                 title="점검 후 외관 사진"

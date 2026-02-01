@@ -24,58 +24,44 @@ function getServiceAccountAuth() {
   });
 }
 
-// 폴더 캐시 (중복 생성 방지)
-const folderCache = new Map<string, string>();
-
-// 폴더 찾기 또는 생성 (캐시 사용)
+// 폴더 찾기 또는 생성 (중복 방지 로직 개선)
 async function findOrCreateFolder(
   drive: ReturnType<typeof google.drive>,
   folderName: string,
   parentId: string
 ): Promise<string> {
-  const cacheKey = `${parentId}/${folderName}`;
+  try {
+    // 기존 폴더 찾기
+    const existing = await drive.files.list({
+      q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`,
+      fields: 'files(id, name)',
+      spaces: 'drive',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
 
-  // 캐시에 있으면 바로 반환
-  if (folderCache.has(cacheKey)) {
-    return folderCache.get(cacheKey)!;
+    if (existing.data.files && existing.data.files.length > 0) {
+      console.log(`[Google Drive] 기존 폴더 사용: ${folderName} (${existing.data.files[0].id})`);
+      return existing.data.files[0].id!;
+    }
+
+    // 새 폴더 생성
+    const folder = await drive.files.create({
+      requestBody: {
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [parentId],
+      },
+      fields: 'id',
+      supportsAllDrives: true,
+    });
+
+    console.log(`[Google Drive] 새 폴더 생성: ${folderName} (${folder.data.id})`);
+    return folder.data.id!;
+  } catch (error) {
+    console.error(`[Google Drive] 폴더 찾기/생성 실패: ${folderName}`, error);
+    throw error;
   }
-
-  // 기존 폴더 찾기
-  const existing = await drive.files.list({
-    q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`,
-    fields: 'files(id, name)',
-    spaces: 'drive',
-  });
-
-  if (existing.data.files && existing.data.files.length > 0) {
-    const folderId = existing.data.files[0].id!;
-    folderCache.set(cacheKey, folderId);
-    return folderId;
-  }
-
-  // 새 폴더 생성
-  const folder = await drive.files.create({
-    requestBody: {
-      name: folderName,
-      mimeType: 'application/vnd.google-apps.folder',
-      parents: [parentId],
-    },
-    fields: 'id',
-  });
-
-  const folderId = folder.data.id!;
-  folderCache.set(cacheKey, folderId);
-  console.log(`[Google Drive] 폴더 생성: ${folderName} (${folderId})`);
-
-  return folderId;
-}
-
-// Buffer를 Readable 스트림으로 변환
-function bufferToStream(buffer: Buffer): Readable {
-  const stream = new Readable();
-  stream.push(buffer);
-  stream.push(null);
-  return stream;
 }
 
 /**
@@ -105,12 +91,19 @@ export async function backupPhotoToGoogleDrive(
   try {
     const drive = google.drive({ version: 'v3', auth });
 
-    // 폴더 구조: 차량번호 > 날짜 > 점검유형
+    console.log(`[Google Drive] 업로드 시작: ${vehicleNumber}/${date}/${inspectionType}/${fileName}`);
+
+    // 폴더 구조: 차량번호 > 날짜 > 점검유형 (순차적으로 생성)
     const vehicleFolderId = await findOrCreateFolder(drive, vehicleNumber, rootFolderId);
     const dateFolderId = await findOrCreateFolder(drive, date, vehicleFolderId);
     const typeFolderId = await findOrCreateFolder(drive, inspectionType, dateFolderId);
 
+    // Buffer를 Readable 스트림으로 변환 (Node.js 방식)
+    const stream = Readable.from(buffer);
+
     // 파일 업로드
+    console.log(`[Google Drive] 파일 업로드 시작 - 크기: ${buffer.length} bytes, mimeType: ${mimeType}`);
+
     const file = await drive.files.create({
       requestBody: {
         name: fileName,
@@ -118,14 +111,24 @@ export async function backupPhotoToGoogleDrive(
       },
       media: {
         mimeType,
-        body: bufferToStream(buffer),
+        body: stream,
       },
-      fields: 'id, webViewLink',
+      fields: 'id, webViewLink, webContentLink',
+      supportsAllDrives: true,
     });
+
+    console.log(`[Google Drive] files.create 응답:`, JSON.stringify(file.data, null, 2));
+
+    if (!file.data.id) {
+      console.error('[Google Drive] 파일 ID 없음');
+      return null;
+    }
+
+    console.log(`[Google Drive] 파일 업로드 완료: ${file.data.id}`);
 
     // 공개 권한 설정 (링크로 접근 가능)
     await drive.permissions.create({
-      fileId: file.data.id!,
+      fileId: file.data.id,
       requestBody: {
         role: 'reader',
         type: 'anyone',
@@ -135,8 +138,8 @@ export async function backupPhotoToGoogleDrive(
     console.log(`[Google Drive] 백업 완료: ${vehicleNumber}/${date}/${inspectionType}/${fileName}`);
 
     return {
-      fileId: file.data.id!,
-      webViewLink: file.data.webViewLink || '',
+      fileId: file.data.id,
+      webViewLink: file.data.webViewLink || file.data.webContentLink || '',
     };
   } catch (error) {
     console.error('[Google Drive] 백업 실패:', error);

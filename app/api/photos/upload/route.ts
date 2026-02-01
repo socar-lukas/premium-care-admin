@@ -4,6 +4,7 @@ import { saveUploadedFile } from '@/lib/file-upload';
 import { uploadBufferToCloudinary } from '@/lib/cloudinary';
 import { backupPhotoToGoogleDrive } from '@/lib/google-drive';
 import { updatePhotoCount } from '@/lib/google-sheets';
+import { sendPhotosEmail, EmailAttachment } from '@/lib/email';
 import { z } from 'zod';
 import path from 'path';
 
@@ -64,9 +65,11 @@ export async function POST(request: NextRequest) {
     };
 
     const inspectionDateObj = new Date(inspectionDate);
+    const inspectionDateStr = inspectionDateObj.toISOString().split('T')[0];
     const baseFileName = `${vehicle.vehicleNumber} - ${vehicle.ownerName}, ${formatDate(inspectionDateObj)}, ${inspection.overallStatus}, ${inspection.inspectionType}${inspection.inspector ? `, ${inspection.inspector}` : ''}`;
 
     const uploadedPhotos = [];
+    const emailAttachments: EmailAttachment[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -91,7 +94,6 @@ export async function POST(request: NextRequest) {
       const mimeType = file.type || 'image/jpeg';
 
       // Cloudinary에 업로드
-      const inspectionDateStr = inspectionDateObj.toISOString().split('T')[0];
       const cloudinaryResult = await uploadBufferToCloudinary(
         buffer,
         cloudinaryFileName,
@@ -102,6 +104,8 @@ export async function POST(request: NextRequest) {
       );
 
       // Google Drive 백업 (필수)
+      console.log(`[Photo Upload] Google Drive 백업 시작 - 파일: ${cloudinaryFileName}, 버퍼 크기: ${buffer.length}`);
+
       const googleDriveResult = await backupPhotoToGoogleDrive(
         buffer,
         cloudinaryFileName,
@@ -110,6 +114,8 @@ export async function POST(request: NextRequest) {
         mimeType,
         inspection.inspectionType // '반납상태' 또는 '세차점검'
       );
+
+      console.log(`[Photo Upload] Google Drive 결과:`, googleDriveResult);
 
       // 로컬 저장 (로컬 개발 환경에서만)
       const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
@@ -143,6 +149,13 @@ export async function POST(request: NextRequest) {
       });
 
       uploadedPhotos.push(photo);
+
+      // 이메일 첨부용으로 저장
+      emailAttachments.push({
+        filename: cloudinaryFileName,
+        content: buffer,
+        contentType: mimeType,
+      });
     }
 
     // 사진수 업데이트 (해당 점검의 전체 사진 수)
@@ -155,9 +168,31 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Google Sheets 사진수 업데이트 (비동기, 실패해도 진행)
-      updatePhotoCount(inspection.id, inspection.inspectionType, totalPhotoCount)
-        .catch(err => console.error('[Google Sheets] 사진수 업데이트 실패:', err));
+      console.log(`[Photo Upload] 총 사진 수: ${totalPhotoCount}, 점검 ID: ${inspection.id}, 유형: ${inspection.inspectionType}`);
+
+      // Google Sheets 사진수 업데이트 (필수)
+      try {
+        const updateResult = await updatePhotoCount(inspection.id, inspection.inspectionType, totalPhotoCount);
+        console.log(`[Photo Upload] 사진수 업데이트 결과: ${updateResult}`);
+      } catch (err) {
+        console.error('[Google Sheets] 사진수 업데이트 실패:', err);
+      }
+
+      // 이메일로 사진 백업 발송
+      if (emailAttachments.length > 0) {
+        try {
+          const emailResult = await sendPhotosEmail(
+            vehicle.vehicleNumber,
+            vehicle.ownerName,
+            inspection.inspectionType,
+            inspectionDateStr,
+            emailAttachments
+          );
+          console.log(`[Photo Upload] 이메일 발송 결과: ${emailResult}`);
+        } catch (err) {
+          console.error('[Email] 사진 이메일 발송 실패:', err);
+        }
+      }
     }
 
     return NextResponse.json(
