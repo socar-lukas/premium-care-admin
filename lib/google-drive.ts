@@ -1,231 +1,108 @@
 import { google } from 'googleapis';
-import { OAuth2Client } from 'google-auth-library';
-import fs from 'fs';
-import path from 'path';
+import { Readable } from 'stream';
 
-let oauth2Client: OAuth2Client | null = null;
+// 서비스 계정 인증 클라이언트
+function getServiceAccountAuth() {
+  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-export function getGoogleDriveClient(): OAuth2Client | null {
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  if (!email || !privateKey) {
     return null;
   }
 
-  if (!oauth2Client) {
-    oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
-    );
-
-    if (process.env.GOOGLE_REFRESH_TOKEN) {
-      oauth2Client.setCredentials({
-        refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-      });
-    }
-  }
-
-  return oauth2Client;
+  return new google.auth.JWT({
+    email,
+    key: privateKey,
+    scopes: [
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/spreadsheets',
+    ],
+  });
 }
 
-export async function uploadToGoogleDrive(
-  filePath: string,
-  fileName: string,
-  folderPath: string,
-  mimeType?: string
-): Promise<{ fileId: string; webViewLink: string } | null> {
-  const auth = getGoogleDriveClient();
-  if (!auth) {
-    console.warn('Google Drive credentials not configured');
-    return null;
+// 폴더 찾기 또는 생성
+async function findOrCreateFolder(
+  drive: ReturnType<typeof google.drive>,
+  folderName: string,
+  parentId: string
+): Promise<string> {
+  // 기존 폴더 찾기
+  const existing = await drive.files.list({
+    q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`,
+    fields: 'files(id, name)',
+  });
+
+  if (existing.data.files && existing.data.files.length > 0) {
+    return existing.data.files[0].id!;
   }
 
-  try {
-    const drive = google.drive({ version: 'v3', auth });
+  // 새 폴더 생성
+  const folder = await drive.files.create({
+    requestBody: {
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [parentId],
+    },
+    fields: 'id',
+  });
 
-    // 최상위 폴더 ID 설정 (환경 변수로 지정하거나 루트 사용)
-    let parentFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID || 'root';
-    
-    // 상위 폴더 이름이 지정되어 있으면 먼저 생성/찾기
-    const topLevelFolderName = process.env.GOOGLE_DRIVE_TOP_FOLDER_NAME || 'PremiumCare';
-    if (topLevelFolderName && parentFolderId === 'root') {
-      // 루트에 상위 폴더가 있는지 확인
-      const existingTopFolders = await drive.files.list({
-        q: `name='${topLevelFolderName}' and mimeType='application/vnd.google-apps.folder' and 'root' in parents and trashed=false`,
-        fields: 'files(id, name)',
-      });
-
-      if (existingTopFolders.data.files && existingTopFolders.data.files.length > 0) {
-        parentFolderId = existingTopFolders.data.files[0].id!;
-      } else {
-        // 상위 폴더 생성
-        const topFolder = await drive.files.create({
-          requestBody: {
-            name: topLevelFolderName,
-            mimeType: 'application/vnd.google-apps.folder',
-            parents: ['root'],
-          },
-          fields: 'id',
-        });
-        parentFolderId = topFolder.data.id!;
-      }
-    }
-    
-    // 차량번호 폴더 생성 또는 찾기
-    if (folderPath) {
-      // 폴더명은 차량번호만 사용 (슬래시로 구분된 경우 첫 번째만 사용)
-      const folderName = folderPath.split('/')[0];
-      
-      if (folderName) {
-        // 차량번호 폴더가 이미 존재하는지 확인
-        const existingFolders = await drive.files.list({
-          q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${parentFolderId}' in parents and trashed=false`,
-          fields: 'files(id, name)',
-        });
-
-        if (existingFolders.data.files && existingFolders.data.files.length > 0) {
-          parentFolderId = existingFolders.data.files[0].id!;
-        } else {
-          // 차량번호 폴더 생성
-          const folder = await drive.files.create({
-            requestBody: {
-              name: folderName,
-              mimeType: 'application/vnd.google-apps.folder',
-              parents: [parentFolderId],
-            },
-            fields: 'id',
-          });
-          parentFolderId = folder.data.id!;
-        }
-      }
-    }
-
-    // MIME 타입 결정
-    const ext = path.extname(fileName).toLowerCase();
-    const mimeTypes: Record<string, string> = {
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.png': 'image/png',
-      '.gif': 'image/gif',
-      '.webp': 'image/webp',
-      '.heic': 'image/heic',
-    };
-    const detectedMimeType = mimeType || mimeTypes[ext] || 'image/jpeg';
-
-    // 파일 업로드
-    const fileMetadata = {
-      name: fileName,
-      parents: [parentFolderId],
-    };
-
-    const media = {
-      mimeType: detectedMimeType,
-      body: fs.createReadStream(filePath),
-    };
-
-    const file = await drive.files.create({
-      requestBody: fileMetadata,
-      media: media,
-      fields: 'id, webViewLink',
-    });
-
-    // 파일 공개 권한 설정 (선택사항)
-    await drive.permissions.create({
-      fileId: file.data.id!,
-      requestBody: {
-        role: 'reader',
-        type: 'anyone',
-      },
-    });
-
-    return {
-      fileId: file.data.id!,
-      webViewLink: file.data.webViewLink || '',
-    };
-  } catch (error) {
-    console.error('Error uploading to Google Drive:', error);
-    return null;
-  }
+  return folder.data.id!;
 }
 
-export async function uploadToGoogleDriveFromBuffer(
+// Buffer를 Readable 스트림으로 변환
+function bufferToStream(buffer: Buffer): Readable {
+  const stream = new Readable();
+  stream.push(buffer);
+  stream.push(null);
+  return stream;
+}
+
+/**
+ * Google Drive에 사진 백업
+ * 폴더 구조: 루트폴더 > 차량번호 > 날짜 > 파일
+ */
+export async function backupPhotoToGoogleDrive(
   buffer: Buffer,
   fileName: string,
   vehicleNumber: string,
+  date: string, // YYYY-MM-DD 형식
   mimeType: string
 ): Promise<{ fileId: string; webViewLink: string } | null> {
-  const auth = getGoogleDriveClient();
+  const auth = getServiceAccountAuth();
   if (!auth) {
-    console.warn('Google Drive credentials not configured');
+    console.warn('[Google Drive] 서비스 계정 credentials 미설정');
+    return null;
+  }
+
+  const rootFolderId = process.env.GOOGLE_DRIVE_BACKUP_FOLDER_ID;
+  if (!rootFolderId) {
+    console.warn('[Google Drive] GOOGLE_DRIVE_BACKUP_FOLDER_ID 미설정');
     return null;
   }
 
   try {
     const drive = google.drive({ version: 'v3', auth });
 
-    let parentFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID || 'root';
+    // 차량번호 폴더 찾기/생성
+    const vehicleFolderId = await findOrCreateFolder(drive, vehicleNumber, rootFolderId);
 
-    // If GOOGLE_DRIVE_FOLDER_ID is not set, create a top-level folder
-    if (parentFolderId === 'root' && process.env.GOOGLE_DRIVE_TOP_FOLDER_NAME) {
-      const topFolderName = process.env.GOOGLE_DRIVE_TOP_FOLDER_NAME;
-      const existingTopFolders = await drive.files.list({
-        q: `name='${topFolderName}' and mimeType='application/vnd.google-apps.folder' and 'root' in parents and trashed=false`,
-        fields: 'files(id, name)',
-      });
+    // 날짜 폴더 찾기/생성
+    const dateFolderId = await findOrCreateFolder(drive, date, vehicleFolderId);
 
-      if (existingTopFolders.data.files && existingTopFolders.data.files.length > 0) {
-        parentFolderId = existingTopFolders.data.files[0].id!;
-      } else {
-        const topFolder = await drive.files.create({
-          requestBody: {
-            name: topFolderName,
-            mimeType: 'application/vnd.google-apps.folder',
-            parents: ['root'],
-          },
-          fields: 'id',
-        });
-        parentFolderId = topFolder.data.id!;
-      }
-    }
-
-    // Create/find vehicle-specific folder
-    const vehicleFolderName = vehicleNumber;
-    let vehicleFolderId = parentFolderId;
-
-    const existingVehicleFolders = await drive.files.list({
-      q: `name='${vehicleFolderName}' and mimeType='application/vnd.google-apps.folder' and '${parentFolderId}' in parents and trashed=false`,
-      fields: 'files(id, name)',
-    });
-
-    if (existingVehicleFolders.data.files && existingVehicleFolders.data.files.length > 0) {
-      vehicleFolderId = existingVehicleFolders.data.files[0].id!;
-    } else {
-      const vehicleFolder = await drive.files.create({
-        requestBody: {
-          name: vehicleFolderName,
-          mimeType: 'application/vnd.google-apps.folder',
-          parents: [parentFolderId],
-        },
-        fields: 'id',
-      });
-      vehicleFolderId = vehicleFolder.data.id!;
-    }
-
-    const fileMetadata = {
-      name: fileName,
-      parents: [vehicleFolderId],
-    };
-
-    const media = {
-      mimeType: mimeType,
-      body: buffer,
-    };
-
+    // 파일 업로드
     const file = await drive.files.create({
-      requestBody: fileMetadata,
-      media: media,
+      requestBody: {
+        name: fileName,
+        parents: [dateFolderId],
+      },
+      media: {
+        mimeType,
+        body: bufferToStream(buffer),
+      },
       fields: 'id, webViewLink',
     });
 
+    // 공개 권한 설정 (링크로 접근 가능)
     await drive.permissions.create({
       fileId: file.data.id!,
       requestBody: {
@@ -234,18 +111,23 @@ export async function uploadToGoogleDriveFromBuffer(
       },
     });
 
+    console.log(`[Google Drive] 백업 완료: ${vehicleNumber}/${date}/${fileName}`);
+
     return {
       fileId: file.data.id!,
       webViewLink: file.data.webViewLink || '',
     };
   } catch (error) {
-    console.error('Error uploading to Google Drive:', error);
+    console.error('[Google Drive] 백업 실패:', error);
     return null;
   }
 }
 
+/**
+ * Google Drive에서 파일 삭제
+ */
 export async function deleteFromGoogleDrive(fileId: string): Promise<boolean> {
-  const auth = getGoogleDriveClient();
+  const auth = getServiceAccountAuth();
   if (!auth) {
     return false;
   }
@@ -253,10 +135,10 @@ export async function deleteFromGoogleDrive(fileId: string): Promise<boolean> {
   try {
     const drive = google.drive({ version: 'v3', auth });
     await drive.files.delete({ fileId });
+    console.log(`[Google Drive] 삭제 완료: ${fileId}`);
     return true;
   } catch (error) {
-    console.error('Error deleting from Google Drive:', error);
+    console.error('[Google Drive] 삭제 실패:', error);
     return false;
   }
 }
-

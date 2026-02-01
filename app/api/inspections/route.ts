@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { appendInspectionRecord } from '@/lib/google-sheets';
 import { z } from 'zod';
 
 const inspectionSchema = z.object({
@@ -161,6 +162,27 @@ export async function POST(request: NextRequest) {
         areas: true,
       },
     });
+
+    // Google Sheets 백업 (비동기, 실패해도 진행)
+    const details = data.details as Record<string, unknown> | undefined;
+    appendInspectionRecord({
+      date: new Date(data.inspectionDate).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+      vehicleNumber: vehicle.vehicleNumber,
+      ownerName: vehicle.ownerName,
+      inspectionType: data.inspectionType,
+      overallStatus: data.overallStatus,
+      inspector: data.inspector || '',
+      contamination: details?.contamination as string | undefined,
+      exteriorDamage: details?.exteriorDamage as string[] | undefined,
+      tires: details?.tires as Record<string, string> | undefined,
+      interiorContamination: details?.interiorContamination as string[] | undefined,
+      carWash: details?.carWash as string | undefined,
+      battery: details?.battery as string | undefined,
+      wiperWasher: details?.wiperWasher as string[] | undefined,
+      warningLights: details?.warningLights as string[] | undefined,
+      memo: data.memo,
+      photoCount: 0, // 사진은 별도로 업로드되므로 0으로 시작
+    }).catch(err => console.error('[Google Sheets] 기록 에러:', err));
 
     return NextResponse.json(inspection, { status: 201 });
   } catch (error) {

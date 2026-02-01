@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { saveUploadedFile } from '@/lib/file-upload';
 import { uploadBufferToCloudinary } from '@/lib/cloudinary';
+import { backupPhotoToGoogleDrive } from '@/lib/google-drive';
 import { z } from 'zod';
 import path from 'path';
 
@@ -98,6 +99,15 @@ export async function POST(request: NextRequest) {
         inspectionDateStr,
         photoPhase || undefined
       );
+
+      // Google Drive 백업 (비동기, 실패해도 진행)
+      backupPhotoToGoogleDrive(
+        buffer,
+        cloudinaryFileName,
+        vehicle.vehicleNumber,
+        inspectionDateStr,
+        mimeType
+      ).catch(err => console.error('[Google Drive] 백업 에러:', err));
 
       // 로컬 저장 (로컬 개발 환경에서만)
       const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
