@@ -167,10 +167,6 @@ export async function POST(request: NextRequest) {
     const details = data.details as Record<string, unknown> | undefined;
     const dateStr = new Date(data.inspectionDate).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
 
-    // 디버깅: 전달되는 데이터 로그
-    console.log('[Inspection API] 점검 유형:', data.inspectionType);
-    console.log('[Inspection API] details 객체:', JSON.stringify(details, null, 2));
-
     if (data.inspectionType === '반납상태') {
       await appendReturnInspection({
         inspectionId: inspection.id,

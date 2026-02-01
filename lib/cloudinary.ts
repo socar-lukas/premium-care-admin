@@ -34,13 +34,7 @@ export async function uploadBufferToCloudinary(
 
   try {
     // 폴더 구조: PremiumCare/차량번호/날짜/점검전 or 점검후/
-    // 한국 시간 기준으로 날짜 생성
-    const getKoreanDateString = () => {
-      const now = new Date();
-      const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
-      return koreaTime.toISOString().split('T')[0];
-    };
-    const dateFolder = inspectionDate || getKoreanDateString();
+    const dateFolder = inspectionDate || new Date().toISOString().split('T')[0];
     const phaseFolder = photoPhase === 'before' ? '점검전' : photoPhase === 'after' ? '점검후' : '';
     const folder = phaseFolder
       ? `PremiumCare/${vehicleNumber}/${dateFolder}/${phaseFolder}`
