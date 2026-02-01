@@ -106,7 +106,8 @@ export async function POST(request: NextRequest) {
         cloudinaryFileName,
         vehicle.vehicleNumber,
         inspectionDateStr,
-        mimeType
+        mimeType,
+        inspection.inspectionType // '반납상태' 또는 '세차점검'
       );
 
       // 로컬 저장 (로컬 개발 환경에서만)
