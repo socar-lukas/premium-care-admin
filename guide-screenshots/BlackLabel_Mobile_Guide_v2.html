@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BlackLabel Admin 모바일 사용 가이드</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .cover {
+      text-align: center;
+      padding: 80px 20px;
+      background: linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%);
+      border-radius: 16px;
+      margin-bottom: 40px;
+      page-break-after: always;
+    }
+
+    .cover h1 {
+      font-size: 36px;
+      margin-bottom: 10px;
+      background: linear-gradient(to right, #B8860B, #DAA520, #B8860B);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .cover .subtitle {
+      font-size: 20px;
+      color: #666;
+      margin-bottom: 40px;
+    }
+
+    .cover .version {
+      font-size: 14px;
+      color: #888;
+    }
+
+    .cover .url {
+      margin-top: 30px;
+      font-size: 18px;
+      color: #0078FF;
+      font-weight: bold;
+    }
+
+    h2 {
+      color: #1a1a1a;
+      border-bottom: 3px solid #0078FF;
+      padding-bottom: 10px;
+      margin-top: 40px;
+      page-break-before: always;
+    }
+
+    h2:first-of-type {
+      page-break-before: avoid;
+    }
+
+    h3 {
+      color: #333;
+      margin-top: 25px;
+      background: #f0f7ff;
+      padding: 10px 15px;
+      border-left: 4px solid #0078FF;
+    }
+
+    .screenshot {
+      text-align: center;
+      margin: 20px 0;
+      page-break-inside: avoid;
+    }
+
+    .screenshot img {
+      max-width: 320px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .screenshot.wide img {
+      max-width: 100%;
+    }
+
+    .screenshot figcaption {
+      font-size: 12px;
+      color: #666;
+      margin-top: 8px;
+    }
+
+    .tip {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .tip strong {
+      color: #856404;
+    }
+
+    .warning {
+      background: #f8d7da;
+      border-left: 4px solid #dc3545;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .warning strong {
+      color: #721c24;
+    }
+
+    .step {
+      background: white;
+      padding: 20px;
+      margin: 15px 0;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      page-break-inside: avoid;
+    }
+
+    .step-number {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      background: #0078FF;
+      color: white;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 28px;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+
+    ul, ol {
+      padding-left: 25px;
+    }
+
+    li {
+      margin: 8px 0;
+    }
+
+    .button-guide {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      margin: 2px;
+    }
+
+    .btn-blue {
+      background: linear-gradient(135deg, #0078FF 0%, #005AFF 100%);
+      color: white;
+    }
+
+    .btn-green {
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      color: white;
+    }
+
+    .btn-orange {
+      background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+      color: white;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background: #f8f9fa;
+      font-weight: 600;
+    }
+
+    .toc {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .toc h3 {
+      margin-top: 0;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .toc ol {
+      list-style: none;
+      padding: 0;
+    }
+
+    .toc li {
+      padding: 8px 0;
+      border-bottom: 1px dashed #eee;
+    }
+
+    .toc a {
+      color: #0078FF;
+      text-decoration: none;
+    }
+
+    .callout {
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 12px;
+      margin: 15px 0;
+    }
+
+    .callout-number {
+      width: 32px;
+      height: 32px;
+      background: #0078FF;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .callout-content {
+      flex: 1;
+    }
+
+    .callout-content strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-blue {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .status-green {
+      background: #d1fae5;
+      color: #059669;
+    }
+
+    .status-red {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    .status-yellow {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .cover {
+        background: linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 50%, #A3D1FF 100%) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 표지 -->
+  <div class="cover">
+    <h1>BlackLabel Admin</h1>
+    <p class="subtitle">모바일 사용 가이드</p>
+    <p class="url">blacklabel.vercel.app</p>
+    <p class="version">버전 2.0 | 2026년 2월</p>
+  </div>
+
+  <!-- 목차 -->
+  <div class="toc">
+    <h3>목차</h3>
+    <ol>
+      <li><a href="#intro">1. 시작하기</a></li>
+      <li><a href="#dashboard">2. 대시보드 화면</a></li>
+      <li><a href="#return">3. 반납상태 등록하기</a></li>
+      <li><a href="#carwash">4. 세차·점검 등록하기</a></li>
+      <li><a href="#maintenance">5. 소모품·경정비 등록하기</a></li>
+      <li><a href="#photo">6. 사진 촬영 가이드</a></li>
+      <li><a href="#faq">7. 자주 묻는 질문</a></li>
+    </ol>
+  </div>
+
+  <!-- 1. 시작하기 -->
+  <h2 id="intro">1. 시작하기</h2>
+
+  <p><strong>BlackLabel Admin</strong>은 차량 점검 상태를 기록하고 관리하는 모바일 웹 서비스입니다.</p>
+
+  <h3>접속 방법</h3>
+  <p>스마트폰 브라우저에서 <strong>blacklabel.vercel.app</strong>에 접속합니다.</p>
+
+  <h3>홈 화면에 추가하기 (앱처럼 사용)</h3>
+
+  <div class="step">
+    <span class="step-number">1</span>
+    <strong>iPhone (Safari)</strong>
+    <ol>
+      <li>Safari로 접속</li>
+      <li>하단 공유 버튼 (□↑) 터치</li>
+      <li>"홈 화면에 추가" 선택</li>
+      <li>"추가" 터치</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <span class="step-number">2</span>
+    <strong>Android (Chrome)</strong>
+    <ol>
+      <li>Chrome으로 접속</li>
+      <li>우측 상단 메뉴 (⋮) 터치</li>
+      <li>"홈 화면에 추가" 선택</li>
+      <li>"추가" 터치</li>
+    </ol>
+  </div>
+
+  <div class="tip">
+    <strong>TIP:</strong> 홈 화면에 추가하면 앱처럼 전체 화면으로 사용할 수 있습니다.
+  </div>
+
+  <!-- 2. 대시보드 -->
+  <h2 id="dashboard">2. 대시보드 화면</h2>
+
+  <p>앱을 실행하면 가장 먼저 보이는 메인 화면입니다.</p>
+
+  <figure class="screenshot">
+    <img src="01_dashboard.png" alt="대시보드 화면">
+    <figcaption>대시보드 메인 화면</figcaption>
+  </figure>
+
+  <h3>화면 구성 설명</h3>
+
+  <div class="callout">
+    <div class="callout-number">1</div>
+    <div class="callout-content">
+      <strong>상단 통계 카드</strong>
+      <ul>
+        <li><span class="status-badge status-blue">전체 차량</span> - 등록된 총 차량 수</li>
+        <li><span class="status-badge status-green">운행중</span> - 현재 고객이 이용 중인 차량</li>
+        <li><span class="status-badge status-yellow">D+1 예약</span> - 24시간 내 예약 시작 예정</li>
+        <li><span class="status-badge status-red">D+1 점검 필요</span> - 점검이 필요한 차량</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-number">2</div>
+    <div class="callout-content">
+      <strong>검색창</strong>
+      <p>차량번호 또는 모델명으로 검색할 수 있습니다.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-number">3</div>
+    <div class="callout-content">
+      <strong>차량 목록</strong>
+      <p>차량번호, 모델명, 최근 점검일, 상태 배지가 표시됩니다.</p>
+      <p>차량을 터치하면 상세 페이지로 이동합니다.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-number">4</div>
+    <div class="callout-content">
+      <strong>햄버거 메뉴 (≡)</strong>
+      <p>오른쪽 상단 메뉴를 터치하면 주요 기능으로 바로 이동할 수 있습니다.</p>
+      <ul>
+        <li>대시보드</li>
+        <li>반납상태 등록</li>
+        <li>세차·점검 등록</li>
+        <li>소모품·경정비 등록</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="tip">
+    <strong>TIP:</strong> 통계 카드를 터치하면 해당 상태의 차량만 필터링됩니다. 예를 들어 "점검필요"를 터치하면 점검이 필요한 차량만 표시됩니다.
+  </div>
+
+  <!-- 3. 반납상태 등록 -->
+  <h2 id="return">3. 반납상태 등록하기</h2>
+
+  <p>고객이 차량을 반납했을 때 차량 상태를 기록합니다.</p>
+
+  <figure class="screenshot">
+    <img src="02_return_status_form.png" alt="반납상태 등록 화면">
+    <figcaption>반납상태 등록 화면</figcaption>
+  </figure>
+
+  <h3>입력 순서</h3>
+
+  <div class="step">
+    <span class="step-number">1</span>
+    <strong>차량번호 입력</strong>
+    <p>차량번호 4자리 이상 입력하면 자동으로 검색 결과가 표시됩니다.<br>
+    검색된 차량을 터치하여 선택합니다.</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">2</span>
+    <strong>담당자 선택</strong>
+    <p>본인 이름을 선택합니다.<br>
+    목록에 없으면 이름을 입력하고 "추가" 버튼을 터치합니다.</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">3</span>
+    <strong>반납차량 오염도</strong>
+    <table>
+      <tr>
+        <th>선택값</th>
+        <th>설명</th>
+      </tr>
+      <tr>
+        <td><span class="status-badge status-red">상 (심함)</span></td>
+        <td>오염이 심한 상태</td>
+      </tr>
+      <tr>
+        <td><span class="status-badge status-yellow">중 (보통)</span></td>
+        <td>보통 수준의 오염</td>
+      </tr>
+      <tr>
+        <td><span class="status-badge status-green">하 (깨끗)</span></td>
+        <td>깨끗한 상태</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="step">
+    <span class="step-number">4</span>
+    <strong>외관이상 유형</strong>
+    <table>
+      <tr>
+        <th>선택값</th>
+        <th>설명</th>
+      </tr>
+      <tr>
+        <td><span class="status-badge status-green">이상없음</span></td>
+        <td>외관 손상 없음</td>
+      </tr>
+      <tr>
+        <td><span class="status-badge status-yellow">경미</span></td>
+        <td>운행 가능한 작은 손상</td>
+      </tr>
+      <tr>
+        <td><span class="status-badge status-red">파손</span></td>
+        <td>운행 불가능한 심각한 손상</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="step">
+    <span class="step-number">5</span>
+    <strong>타이어 상태</strong>
+    <p>4개 타이어(앞좌/앞우/뒤좌/뒤우) 각각의 상태를 선택합니다.</p>
+    <ul>
+      <li><span class="status-badge status-green">정상</span> - 이상 없음</li>
+      <li><span class="status-badge status-yellow">경미</span> - 약간의 마모/손상</li>
+      <li><span class="status-badge status-red">파손</span> - 교체 필요</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <span class="step-number">6</span>
+    <strong>내부 오염 위치 (복수 선택 가능)</strong>
+    <p>오염된 부위를 모두 선택합니다.</p>
+    <ul>
+      <li>깨끗함, 운전석, 조수석, 뒷좌석, 트렁크, 컵홀더, 기타</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <span class="step-number">7</span>
+    <strong>점검 전 외관 사진 (필수)</strong>
+    <p>전면 / 우측 / 후면 / 좌측 - <strong>4방향 모두 촬영 필수</strong></p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">8</span>
+    <strong>점검 전 내부 사진 (필수)</strong>
+    <p>발매트, 컵홀더 등 내부 상태를 촬영합니다.</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">9</span>
+    <strong>특이사항 (선택)</strong>
+    <p>추가로 기록할 내용이 있으면 입력합니다.</p>
+  </div>
+
+  <div class="warning">
+    <strong>중요!</strong> 외관 사진 4장(전/우/후/좌)과 내부 사진 1장 이상을 모두 등록해야 "등록하기" 버튼이 활성화됩니다.
+  </div>
+
+  <!-- 4. 세차·점검 등록 -->
+  <h2 id="carwash">4. 세차·점검 등록하기</h2>
+
+  <p>세차 완료 후 점검 결과를 기록합니다.</p>
+
+  <figure class="screenshot">
+    <img src="03_carwash_form.png" alt="세차·점검 등록 화면">
+    <figcaption>세차·점검 등록 화면</figcaption>
+  </figure>
+
+  <h3>입력 순서</h3>
+
+  <div class="step">
+    <span class="step-number">1</span>
+    <strong>차량번호 / 담당자</strong>
+    <p>반납상태 등록과 동일하게 입력합니다.</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">2</span>
+    <strong>세차 (필수)</strong>
+    <table>
+      <tr>
+        <th>선택값</th>
+        <th>설명</th>
+      </tr>
+      <tr>
+        <td><span class="button-guide btn-blue">약식세차</span></td>
+        <td>기본 세차</td>
+      </tr>
+      <tr>
+        <td><span class="button-guide btn-blue">정밀세차</span></td>
+        <td>꼼꼼한 세차</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="step">
+    <span class="step-number">3</span>
+    <strong>배터리 상태 (필수)</strong>
+    <table>
+      <tr>
+        <th>선택값</th>
+        <th>설명</th>
+      </tr>
+      <tr>
+        <td><span class="status-badge status-green">시동정상</span></td>
+        <td>정상 시동</td>
+      </tr>
+      <tr>
+        <td><span class="status-badge status-red">시동불량</span></td>
+        <td>시동 걸리지 않음</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="step">
+    <span class="step-number">4</span>
+    <strong>와이퍼/워셔액 (복수 선택)</strong>
+    <ul>
+      <li><span class="status-badge status-green">정상</span></li>
+      <li><span class="status-badge status-red">와이퍼 불량</span></li>
+      <li><span class="status-badge status-red">워셔액 부족</span></li>
+      <li><span class="status-badge status-red">워셔액통 파손</span></li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <span class="step-number">5</span>
+    <strong>경고등 (복수 선택)</strong>
+    <ul>
+      <li><span class="status-badge status-green">없음</span></li>
+      <li><span class="status-badge status-red">엔진</span></li>
+      <li><span class="status-badge status-red">공기압</span></li>
+      <li><span class="status-badge status-red">주유</span></li>
+      <li><span class="status-badge status-red">라이트</span></li>
+      <li><span class="status-badge status-yellow">기타(주관식)</span> - 선택 시 내용 입력</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <span class="step-number">6</span>
+    <strong>점검 후 외관 사진 (필수)</strong>
+    <p>세차 완료 후 전면 / 우측 / 후면 / 좌측 - <strong>4방향 모두 촬영 필수</strong></p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">7</span>
+    <strong>점검 후 내부 사진 (필수)</strong>
+    <p>세차 완료 후 발매트, 컵홀더 등 내부 상태를 촬영합니다.</p>
+  </div>
+
+  <div class="tip">
+    <strong>TIP:</strong> 세차·점검 기록이 있어야 대시보드의 "점검필요" 상태가 해제됩니다.
+  </div>
+
+  <!-- 5. 소모품·경정비 등록 -->
+  <h2 id="maintenance">5. 소모품·경정비 등록하기</h2>
+
+  <p>소모품 교환, 경정비, 사고수리 내역을 기록합니다.</p>
+
+  <figure class="screenshot">
+    <img src="04_maintenance_form.png" alt="소모품·경정비 등록 화면">
+    <figcaption>소모품·경정비 등록 화면</figcaption>
+  </figure>
+
+  <h3>입력 순서</h3>
+
+  <div class="step">
+    <span class="step-number">1</span>
+    <strong>차량번호 / 담당자</strong>
+    <p>다른 점검 등록과 동일하게 입력합니다.</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">2</span>
+    <strong>소모품 교체 (복수 선택 가능)</strong>
+    <p>교체한 소모품을 선택합니다.</p>
+    <ul>
+      <li>에어컨필터(내부), 에어컨필터(외부), 와이퍼, 배터리</li>
+      <li>전라이닝, 후라이닝, 엔진오일, 워셔액</li>
+      <li>목록에 없는 항목은 직접 입력하여 추가 가능</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <span class="step-number">3</span>
+    <strong>경정비 (복수 선택 가능)</strong>
+    <p>수행한 경정비 작업을 선택합니다.</p>
+    <ul>
+      <li>타이어 교체, 타이어 위치교환, 휠 얼라인먼트</li>
+      <li>브레이크패드, 에어컨 수리</li>
+      <li>목록에 없는 항목은 직접 입력하여 추가 가능</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <span class="step-number">4</span>
+    <strong>사고수리 (복수 선택 가능)</strong>
+    <p>사고로 인한 수리 작업을 선택합니다.</p>
+    <ul>
+      <li>범퍼 수리, 도어 수리, 유리 교체</li>
+      <li>도색 작업, 판금 작업</li>
+      <li>목록에 없는 항목은 직접 입력하여 추가 가능</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <span class="step-number">5</span>
+    <strong>사진 첨부</strong>
+    <p>교체한 부품, 영수증, 정비 완료 상태 등을 촬영합니다.</p>
+  </div>
+
+  <div class="step">
+    <span class="step-number">6</span>
+    <strong>특이사항 (선택)</strong>
+    <p>상세 내용이 필요한 경우 여기에 입력합니다.</p>
+    <ul>
+      <li>예: "엔진오일 5W-30 교환, 오일필터 동시 교체"</li>
+      <li>예: "앞 타이어 2개 교체 (한국타이어 245/45R18)"</li>
+    </ul>
+  </div>
+
+  <div class="tip">
+    <strong>TIP:</strong> 3가지 카테고리(소모품/경정비/사고수리) 중 최소 1개 이상 선택해야 등록이 가능합니다.
+  </div>
+
+  <!-- 6. 사진 촬영 가이드 -->
+  <h2 id="photo">6. 사진 촬영 가이드</h2>
+
+  <p>사진은 점검 기록의 중요한 증거 자료입니다. 아래 가이드를 참고하여 촬영해주세요.</p>
+
+  <h3>외부 사진 촬영 방법</h3>
+
+  <div class="step">
+    <span class="step-number">1</span>
+    <strong>전면 사진</strong>
+    <ul>
+      <li>차량 정면에서 2~3m 거리</li>
+      <li>번호판이 선명하게 보이도록</li>
+      <li>차량 전체가 프레임 안에 들어오도록</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <span class="step-number">2</span>
+    <strong>후면 사진</strong>
+    <ul>
+      <li>차량 뒤쪽에서 2~3m 거리</li>
+      <li>후면 번호판이 보이도록</li>
+      <li>트렁크, 후미등 상태 확인 가능하도록</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <span class="step-number">3</span>
+    <strong>좌측/우측 사진</strong>
+    <ul>
+      <li>차량 측면에서 2~3m 거리</li>
+      <li>차량 전체가 보이도록</li>
+      <li>도어, 휀더, 휠 상태 확인 가능하도록</li>
+    </ul>
+  </div>
+
+  <h3>내부 사진 촬영 방법</h3>
+
+  <div class="step">
+    <span class="step-number">1</span>
+    <strong>발매트</strong>
+    <ul>
+      <li>운전석/조수석 발매트 상태</li>
+      <li>오염, 이물질 여부가 보이도록</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <span class="step-number">2</span>
+    <strong>컵홀더/센터콘솔</strong>
+    <ul>
+      <li>컵홀더 내부 상태</li>
+      <li>센터콘솔 주변 오염 상태</li>
+    </ul>
+  </div>
+
+  <div class="warning">
+    <strong>주의!</strong>
+    <ul>
+      <li>사진이 흐리거나 흔들리면 안 됩니다</li>
+      <li>각 부위가 잘 보일 수 있도록 촬영해주세요</li>
+      <li>손상 부위가 있다면 클로즈업 사진도 추가해주세요</li>
+    </ul>
+  </div>
+
+  <!-- 7. 자주 묻는 질문 -->
+  <h2 id="faq">7. 자주 묻는 질문</h2>
+
+  <div class="step">
+    <strong>Q: "등록하기" 버튼이 눌리지 않아요</strong>
+    <p><strong>A:</strong> 다음 항목을 확인해주세요:</p>
+    <ul>
+      <li>차량번호가 선택되었는지</li>
+      <li>담당자가 선택되었는지</li>
+      <li>필수 항목(*)이 모두 입력되었는지</li>
+      <li>외관 사진 4장이 모두 등록되었는지</li>
+      <li>내부 사진이 1장 이상 등록되었는지</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <strong>Q: 담당자 이름이 목록에 없어요</strong>
+    <p><strong>A:</strong> 검색창에 이름을 직접 입력하고 "OOO 추가" 버튼을 터치하면 새로운 담당자가 추가됩니다.</p>
+  </div>
+
+  <div class="step">
+    <strong>Q: 사진이 업로드되지 않아요</strong>
+    <p><strong>A:</strong> 네트워크 연결을 확인해주세요. Wi-Fi 또는 LTE 연결 상태가 좋은 곳에서 다시 시도해주세요. 사진 한 장당 10MB를 초과하면 업로드되지 않습니다.</p>
+  </div>
+
+  <div class="step">
+    <strong>Q: 차량을 검색해도 안 나와요</strong>
+    <p><strong>A:</strong> 차량번호 4자리 이상을 정확히 입력해주세요. 숫자와 한글이 정확해야 검색됩니다.</p>
+  </div>
+
+  <div class="step">
+    <strong>Q: "문열기" 버튼은 어디 있나요?</strong>
+    <p><strong>A:</strong> 점검 등록 화면에서 차량을 선택하면 오른쪽 하단에 초록색 "문열기" 버튼이 나타납니다. 이 버튼을 터치하면 옥스트라로 바로 이동합니다.</p>
+  </div>
+
+  <hr style="margin-top: 50px;">
+  <p style="text-align: center; color: #888; font-size: 12px;">
+    BlackLabel Admin v2.0 | 2026년 2월<br>
+    문의: 관리자에게 연락
+  </p>
+
+</body>
+</html>

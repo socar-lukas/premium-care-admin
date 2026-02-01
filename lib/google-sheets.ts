@@ -52,6 +52,21 @@ export interface CarwashInspectionRecord {
   photoCount: number;
 }
 
+// 소모품·경정비 데이터
+export interface MaintenanceRecord {
+  inspectionId: string;
+  date: string;
+  vehicleNumber: string;
+  vehicleType: string;  // D열: 차량종류
+  overallStatus: string;  // 소모품교체/경정비/사고수리
+  inspector: string;
+  consumables?: string[];  // 소모품 교체 항목
+  repairs?: string[];  // 경정비 항목
+  accidentRepairs?: string[];  // 사고수리 항목
+  memo?: string;
+  photoCount: number;
+}
+
 /**
  * 반납상태 시트에 기록 추가
  * 시트명: 반납상태
@@ -161,6 +176,79 @@ export async function appendCarwashInspection(record: CarwashInspectionRecord): 
 }
 
 /**
+ * 소모품·경정비 시트에 기록 추가
+ * 시트명: 소모품경정비
+ * 컬럼: 점검ID, 날짜, 차량번호, 차량종류, 상태, 담당자, 소모품교체, 경정비, 사고수리, 특이사항, 사진수, 기록상태
+ */
+export async function appendMaintenanceRecord(record: MaintenanceRecord): Promise<boolean> {
+  const auth = getServiceAccountAuth();
+  if (!auth) return false;
+
+  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+  if (!spreadsheetId) {
+    console.warn('[Google Sheets] GOOGLE_SHEETS_ID 미설정');
+    return false;
+  }
+
+  try {
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    const arrayToStr = (arr?: string[]) => arr?.join(', ') || '';
+
+    const rowData = [
+      record.inspectionId,                        // A: 점검ID
+      record.date,                                // B: 날짜
+      record.vehicleNumber,                       // C: 차량번호
+      record.vehicleType || '',                   // D: 차량종류
+      record.overallStatus,                       // E: 상태
+      record.inspector || '',                     // F: 담당자
+      arrayToStr(record.consumables),             // G: 소모품교체
+      arrayToStr(record.repairs),                 // H: 경정비
+      arrayToStr(record.accidentRepairs),         // I: 사고수리
+      record.memo || '',                          // J: 특이사항
+      record.photoCount,                          // K: 사진수
+      '정상',                                     // L: 기록상태
+    ];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: '소모품경정비!A:L',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [rowData] },
+    });
+
+    console.log(`[Google Sheets] 소모품경정비 기록 완료: ${record.vehicleNumber}`);
+    return true;
+  } catch (error) {
+    console.error('[Google Sheets] 소모품경정비 기록 실패:', error);
+    return false;
+  }
+}
+
+/**
+ * 시트 이름 반환
+ */
+function getSheetName(inspectionType: string): string {
+  if (inspectionType === '반납상태') return '반납상태';
+  if (inspectionType === '소모품·경정비') return '소모품경정비';
+  return '세차점검';
+}
+
+/**
+ * 사진수 컬럼 반환 (소모품경정비는 K열, 나머지는 L열)
+ */
+function getPhotoCountColumn(inspectionType: string): string {
+  return inspectionType === '소모품·경정비' ? 'K' : 'L';
+}
+
+/**
+ * 기록상태 컬럼 반환 (소모품경정비는 L열, 나머지는 M열)
+ */
+function getStatusColumn(inspectionType: string): string {
+  return inspectionType === '소모품·경정비' ? 'L' : 'M';
+}
+
+/**
  * 사진수 업데이트
  */
 export async function updatePhotoCount(inspectionId: string, inspectionType: string, photoCount: number): Promise<boolean> {
@@ -170,7 +258,8 @@ export async function updatePhotoCount(inspectionId: string, inspectionType: str
   const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
   if (!spreadsheetId) return false;
 
-  const sheetName = inspectionType === '반납상태' ? '반납상태' : '세차점검';
+  const sheetName = getSheetName(inspectionType);
+  const photoCountColumn = getPhotoCountColumn(inspectionType);
 
   try {
     const sheets = google.sheets({ version: 'v4', auth });
@@ -197,10 +286,10 @@ export async function updatePhotoCount(inspectionId: string, inspectionType: str
       return false;
     }
 
-    // L열(사진수) 업데이트
+    // 사진수 업데이트
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `${sheetName}!L${rowIndex}`,
+      range: `${sheetName}!${photoCountColumn}${rowIndex}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [[photoCount]] },
     });
@@ -223,7 +312,8 @@ export async function markInspectionAsDeleted(inspectionId: string, inspectionTy
   const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
   if (!spreadsheetId) return false;
 
-  const sheetName = inspectionType === '반납상태' ? '반납상태' : '세차점검';
+  const sheetName = getSheetName(inspectionType);
+  const statusColumn = getStatusColumn(inspectionType);
 
   try {
     const sheets = google.sheets({ version: 'v4', auth });
@@ -249,10 +339,10 @@ export async function markInspectionAsDeleted(inspectionId: string, inspectionTy
       return false;
     }
 
-    // M열(기록상태) 업데이트
+    // 기록상태 업데이트
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `${sheetName}!M${rowIndex}`,
+      range: `${sheetName}!${statusColumn}${rowIndex}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [['삭제됨']] },
     });

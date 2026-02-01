@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { appendReturnInspection, appendCarwashInspection } from '@/lib/google-sheets';
+import { appendReturnInspection, appendCarwashInspection, appendMaintenanceRecord } from '@/lib/google-sheets';
 import { z } from 'zod';
 
 const inspectionSchema = z.object({
@@ -179,6 +179,20 @@ export async function POST(request: NextRequest) {
         exteriorDamage: details?.exteriorDamage as string[] | undefined,
         tires: details?.tires as Record<string, string> | undefined,
         interiorContamination: details?.interiorContamination as string[] | undefined,
+        memo: data.memo,
+        photoCount: 0,
+      });
+    } else if (data.inspectionType === '소모품·경정비') {
+      await appendMaintenanceRecord({
+        inspectionId: inspection.id,
+        date: dateStr,
+        vehicleNumber: vehicle.vehicleNumber,
+        vehicleType: vehicle.vehicleType || '',
+        overallStatus: data.overallStatus,
+        inspector: data.inspector || '',
+        consumables: details?.consumables as string[] | undefined,
+        repairs: details?.repairs as string[] | undefined,
+        accidentRepairs: details?.accidentRepairs as string[] | undefined,
         memo: data.memo,
         photoCount: 0,
       });
