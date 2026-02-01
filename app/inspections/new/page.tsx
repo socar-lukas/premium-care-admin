@@ -843,7 +843,7 @@ function InspectionForm() {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 text-center">
-                  위 예시처럼 차량 전체가 보이도록 촬영해주세요
+                  각 부위가 잘 보일 수 있도록 촬영해주세요
                 </p>
               </div>
 
