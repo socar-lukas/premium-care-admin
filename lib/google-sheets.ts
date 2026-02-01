@@ -3,11 +3,18 @@ import { google } from 'googleapis';
 // 서비스 계정 인증 클라이언트
 function getServiceAccountAuth() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  let privateKey = process.env.GOOGLE_PRIVATE_KEY;
+
+  console.log('[Google Sheets Auth] email:', email ? 'SET' : 'NOT SET');
+  console.log('[Google Sheets Auth] privateKey:', privateKey ? `SET (${privateKey.length} chars)` : 'NOT SET');
 
   if (!email || !privateKey) {
+    console.error('[Google Sheets Auth] 환경 변수 누락');
     return null;
   }
+
+  // Vercel에서 줄바꿈 처리
+  privateKey = privateKey.replace(/\\n/g, '\n');
 
   return new google.auth.JWT({
     email,

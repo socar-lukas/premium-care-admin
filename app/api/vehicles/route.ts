@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
       model: true,
       manufacturer: true,
       inspections: {
+        where: { inspectionType: '세차점검' }, // 반납상태 제외, 세차점검만
         take: 1,
         orderBy: { inspectionDate: 'desc' as const },
         select: { inspectionDate: true },

@@ -4,11 +4,18 @@ import { Readable } from 'stream';
 // 서비스 계정 인증 클라이언트
 function getServiceAccountAuth() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  let privateKey = process.env.GOOGLE_PRIVATE_KEY;
+
+  console.log('[Google Auth] email:', email ? 'SET' : 'NOT SET');
+  console.log('[Google Auth] privateKey:', privateKey ? `SET (${privateKey.length} chars)` : 'NOT SET');
 
   if (!email || !privateKey) {
+    console.error('[Google Auth] 환경 변수 누락 - GOOGLE_SERVICE_ACCOUNT_EMAIL 또는 GOOGLE_PRIVATE_KEY');
     return null;
   }
+
+  // Vercel에서 줄바꿈 처리 (\\n을 실제 줄바꿈으로)
+  privateKey = privateKey.replace(/\\n/g, '\n');
 
   return new google.auth.JWT({
     email,
