@@ -218,12 +218,12 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
                 +{photoCount - 1}
               </div>
             )}
-            {/* 추가/삭제 버튼 - 모바일: 작은 원 + 큰 아이콘, 데스크탑: 크게+중앙 */}
-            <div className="absolute top-0 right-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 flex gap-0 md:gap-3">
+            {/* 추가/삭제 버튼 - 모바일: 작게, 데스크탑: 크게+중앙 */}
+            <div className="absolute top-0 right-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 flex gap-0 md:gap-3 overflow-hidden">
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
-                className="w-[4px] h-[4px] md:w-8 md:h-8 bg-blue-500/80 text-white rounded-full flex items-center justify-center text-[10px] md:text-lg font-bold leading-none"
+                className="w-3 h-3 md:w-8 md:h-8 bg-blue-500/80 text-white rounded-full flex items-center justify-center text-[8px] md:text-lg font-bold leading-none overflow-hidden"
                 title="사진 추가"
               >
                 +
@@ -231,7 +231,7 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
               <button
                 type="button"
                 onClick={() => handleRemove(0)}
-                className="w-[4px] h-[4px] md:w-8 md:h-8 bg-red-500/80 text-white rounded-full flex items-center justify-center"
+                className="w-3 h-3 md:w-8 md:h-8 bg-red-500/80 text-white rounded-full flex items-center justify-center overflow-hidden"
                 title="삭제"
               >
                 <svg className="w-2 h-2 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
