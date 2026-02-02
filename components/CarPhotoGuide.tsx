@@ -218,21 +218,21 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
                 +{photoCount - 1}
               </div>
             )}
-            {/* 추가/삭제 버튼 - 모바일: 작게, 데스크탑: 크게+중앙 */}
-            <div className="absolute top-0 right-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 flex gap-0 md:gap-3">
+            {/* 추가/삭제 버튼 - 중앙 배치 */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-1 md:gap-3">
               <div
                 onClick={() => inputRef.current?.click()}
-                className="w-[14px] h-[14px] md:w-8 md:h-8 bg-blue-500/80 text-white rounded-full flex items-center justify-center cursor-pointer"
+                className="w-[18px] h-[18px] md:w-8 md:h-8 bg-blue-500/80 text-white rounded-full flex items-center justify-center cursor-pointer"
                 title="사진 추가"
               >
-                <span className="text-[10px] md:text-lg font-bold leading-none">+</span>
+                <span className="text-[12px] md:text-lg font-bold leading-none">+</span>
               </div>
               <div
                 onClick={() => handleRemove(0)}
-                className="w-[14px] h-[14px] md:w-8 md:h-8 bg-red-500/80 text-white rounded-full flex items-center justify-center cursor-pointer"
+                className="w-[18px] h-[18px] md:w-8 md:h-8 bg-red-500/80 text-white rounded-full flex items-center justify-center cursor-pointer"
                 title="삭제"
               >
-                <svg className="w-[8px] h-[8px] md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-[10px] h-[10px] md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
