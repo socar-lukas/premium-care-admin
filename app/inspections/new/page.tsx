@@ -820,6 +820,32 @@ function InspectionForm() {
               {/* 행잉태그/어메니티 비치 여부 */}
               <div className="pl-1">
                 <label className="block text-sm text-gray-600 mb-2">행잉태그/어메니티(생수,손소독제 등) 비치</label>
+
+                {/* 비치 가이드 이미지 */}
+                <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-100">
+                  <p className="text-xs text-blue-600 font-medium mb-2">비치 가이드</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-gray-500 text-center">행잉태그</p>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/guides/hanging-tag.jpg"
+                        alt="행잉태그 가이드"
+                        className="w-full h-auto rounded border border-gray-200"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-gray-500 text-center">어메니티 3종</p>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/guides/amenity-items.png"
+                        alt="어메니티 3종 가이드"
+                        className="w-full h-auto rounded border border-gray-200"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex gap-2">
                   <SelectButton selected={amenity === 'O'} onClick={() => setAmenity('O')} color="green">
                     O
