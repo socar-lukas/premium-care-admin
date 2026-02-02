@@ -219,11 +219,11 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
               </div>
             )}
             {/* 추가/삭제 버튼 - 모바일: 작게, 데스크탑: 크게+중앙 */}
-            <div className="absolute top-0 right-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 flex gap-0 md:gap-3 overflow-hidden">
+            <div className="absolute top-0 right-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 flex gap-0 md:gap-3">
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
-                className="w-3 h-3 md:w-8 md:h-8 bg-blue-500/80 text-white rounded-full flex items-center justify-center text-[8px] md:text-lg font-bold leading-none overflow-hidden"
+                className="w-1.5 h-1.5 md:w-8 md:h-8 bg-blue-500/80 text-white rounded-full flex items-center justify-center text-[5px] md:text-lg font-bold leading-none"
                 title="사진 추가"
               >
                 +
@@ -231,10 +231,10 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
               <button
                 type="button"
                 onClick={() => handleRemove(0)}
-                className="w-3 h-3 md:w-8 md:h-8 bg-red-500/80 text-white rounded-full flex items-center justify-center overflow-hidden"
+                className="w-1.5 h-1.5 md:w-8 md:h-8 bg-red-500/80 text-white rounded-full flex items-center justify-center"
                 title="삭제"
               >
-                <svg className="w-2 h-2 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-1 h-1 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
