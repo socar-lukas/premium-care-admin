@@ -48,6 +48,7 @@ export interface CarwashInspectionRecord {
   battery?: string;
   wiperWasher?: string[];
   warningLights?: string[];
+  amenity?: string;  // K열: 어메니티 (O/X)
   memo?: string;
   photoCount: number;
 }
@@ -127,7 +128,7 @@ export async function appendReturnInspection(record: ReturnInspectionRecord): Pr
 /**
  * 세차점검 시트에 기록 추가
  * 시트명: 세차점검
- * 컬럼: 점검ID, 날짜, 차량번호, 소유자, 상태, 담당자, 세차, 배터리, 와이퍼/워셔액, 경고등, 특이사항, 사진수, 기록상태
+ * 컬럼: 점검ID, 날짜, 차량번호, 차량종류, 상태, 담당자, 세차, 배터리, 와이퍼/워셔액, 경고등, 어메니티, 특이사항, 사진수, 기록상태
  */
 export async function appendCarwashInspection(record: CarwashInspectionRecord): Promise<boolean> {
   const auth = getServiceAccountAuth();
@@ -155,14 +156,15 @@ export async function appendCarwashInspection(record: CarwashInspectionRecord): 
       record.battery || '',                       // H: 배터리
       arrayToStr(record.wiperWasher),             // I: 와이퍼/워셔액
       arrayToStr(record.warningLights),           // J: 경고등
-      record.memo || '',                          // K: 특이사항
-      record.photoCount,                          // L: 사진수
-      '정상',                                     // M: 기록상태
+      record.amenity || '',                       // K: 어메니티
+      record.memo || '',                          // L: 특이사항
+      record.photoCount,                          // M: 사진수
+      '정상',                                     // N: 기록상태
     ];
 
     await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: '세차점검!A:M',
+      range: '세차점검!A:N',
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [rowData] },
     });
@@ -235,17 +237,21 @@ function getSheetName(inspectionType: string): string {
 }
 
 /**
- * 사진수 컬럼 반환 (소모품경정비는 K열, 나머지는 L열)
+ * 사진수 컬럼 반환 (소모품경정비는 K열, 반납상태는 L열, 세차점검은 M열)
  */
 function getPhotoCountColumn(inspectionType: string): string {
-  return inspectionType === '소모품·경정비' ? 'K' : 'L';
+  if (inspectionType === '소모품·경정비') return 'K';
+  if (inspectionType === '반납상태') return 'L';
+  return 'M';  // 세차점검
 }
 
 /**
- * 기록상태 컬럼 반환 (소모품경정비는 L열, 나머지는 M열)
+ * 기록상태 컬럼 반환 (소모품경정비는 L열, 반납상태는 M열, 세차점검은 N열)
  */
 function getStatusColumn(inspectionType: string): string {
-  return inspectionType === '소모품·경정비' ? 'L' : 'M';
+  if (inspectionType === '소모품·경정비') return 'L';
+  if (inspectionType === '반납상태') return 'M';
+  return 'N';  // 세차점검
 }
 
 /**

@@ -208,6 +208,7 @@ export async function POST(request: NextRequest) {
         battery: details?.battery as string | undefined,
         wiperWasher: details?.wiperWasher as string[] | undefined,
         warningLights: details?.warningLights as string[] | undefined,
+        amenity: details?.amenity as string | undefined,
         memo: data.memo,
         photoCount: 0,
       });
