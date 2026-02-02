@@ -574,10 +574,10 @@ export default function VehicleDetailPage({
         {/* 세차·점검기록 목록 */}
         <div className="bg-white rounded-lg shadow mb-6">
           <div className="p-6 border-b border-gray-200">
-            <div className="flex items-baseline gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
               <h2 className="text-xl font-bold text-gray-900">세차·점검 기록</h2>
-              <span className="text-sm text-gray-500">
-                (당월 정밀세차 {monthlyCarWashStats.detailed}회, 약식세차 {monthlyCarWashStats.quick}회 완료)
+              <span className="text-xs sm:text-sm text-gray-500">
+                (당월 정밀 {monthlyCarWashStats.detailed}회, 약식 {monthlyCarWashStats.quick}회)
               </span>
             </div>
           </div>
@@ -669,7 +669,7 @@ export default function VehicleDetailPage({
 
                           {/* 담당자 */}
                           {inspection.inspector && (
-                            <span className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium">
+                            <span className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium truncate max-w-[100px]">
                               담당: {inspection.inspector}
                             </span>
                           )}

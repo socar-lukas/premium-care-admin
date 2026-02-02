@@ -171,14 +171,14 @@ export async function GET() {
       for (const r of upcomingReservations) {
         if (!r.start_at_kst) continue;
 
-        // 예약 시작 9시간 전 시간 계산
-        const nineHoursBefore = new Date(r.start_at_kst.getTime() - 9 * 60 * 60 * 1000);
+        // 예약 시작 24시간 전 시간 계산
+        const twentyFourHoursBefore = new Date(r.start_at_kst.getTime() - 24 * 60 * 60 * 1000);
 
         // 해당 차량의 최근 세차점검 기록 확인
         const lastCarWash = lastCarWashMap[r.car_num];
 
-        // 세차점검 기록이 없거나, 9시간 전보다 이전에 한 경우 점검 필요
-        if (!lastCarWash || lastCarWash < nineHoursBefore) {
+        // 세차점검 기록이 없거나, 24시간 전보다 이전에 한 경우 점검 필요
+        if (!lastCarWash || lastCarWash < twentyFourHoursBefore) {
           needsInspectionReservations.push(r);
         }
       }
