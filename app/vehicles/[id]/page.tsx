@@ -82,6 +82,10 @@ export default function VehicleDetailPage({
   const [showAllInspections, setShowAllInspections] = useState(false);
   const [showAllReturnRecords, setShowAllReturnRecords] = useState(false);
   const [showAllMaintenance, setShowAllMaintenance] = useState(false);
+  const [inspectionAlert, setInspectionAlert] = useState<{
+    needsInspection: boolean;
+    reservationStart?: string;
+  } | null>(null);
 
   // 세차점검 기록, 반납상태 기록, 소모품·경정비 기록 분리
   const carWashInspections = inspections.filter(i => i.inspectionType === '세차점검');
@@ -170,11 +174,27 @@ export default function VehicleDetailPage({
 
   const fetchVehicle = async () => {
     try {
-      const res = await fetch(`/api/vehicles/${params.id}`);
-      if (res.ok) {
-        const data = await res.json();
+      const [vehicleRes, statsRes] = await Promise.all([
+        fetch(`/api/vehicles/${params.id}`),
+        fetch('/api/reservations/stats')
+      ]);
+
+      if (vehicleRes.ok) {
+        const data = await vehicleRes.json();
         setVehicle(data);
         setInspections(data.inspections || []);
+
+        // 예약 상태 확인
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          const vehicleStatus = statsData.vehicleStatusMap?.[data.vehicleNumber];
+          if (vehicleStatus) {
+            setInspectionAlert({
+              needsInspection: vehicleStatus.needsInspection || false,
+              reservationStart: vehicleStatus.reservationStart
+            });
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching vehicle:', error);
@@ -288,6 +308,39 @@ export default function VehicleDetailPage({
             문열기
           </a>
         </div>
+
+        {/* 점검 필요 알림 배너 */}
+        {inspectionAlert?.needsInspection && inspectionAlert.reservationStart && (
+          <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="text-white">
+                <p className="font-bold text-sm md:text-base">
+                  이 차량은{' '}
+                  <span className="text-yellow-200">
+                    {(() => {
+                      const deadline = new Date(new Date(inspectionAlert.reservationStart).getTime() - 4 * 60 * 60 * 1000);
+                      const month = deadline.getMonth() + 1;
+                      const day = deadline.getDate();
+                      const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][deadline.getDay()];
+                      const hours = deadline.getHours().toString().padStart(2, '0');
+                      const minutes = deadline.getMinutes().toString().padStart(2, '0');
+                      return `${month}/${day}(${dayOfWeek}) ${hours}:${minutes}`;
+                    })()}
+                  </span>
+                  까지 세차·점검이 완료되어야 합니다.
+                </p>
+                <p className="text-red-100 text-xs md:text-sm mt-1">
+                  세차·점검 등록 완료 시, 이 알림은 자동으로 사라집니다.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 차량 정보 */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
