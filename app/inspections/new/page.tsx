@@ -206,7 +206,7 @@ function InspectionForm() {
               battery,
               wiperWasher,
               warningLights: warningLights.map(item =>
-                item === '기타(주관식)' && warningLightOther ? `기타: ${warningLightOther}` : item
+                item === '기타' && warningLightOther ? `기타: ${warningLightOther}` : item
               ),
             },
         // 사진이 있으면 기본 영역 생성
@@ -713,7 +713,7 @@ function InspectionForm() {
                   required
                 />
                 <InteriorMultiPhotoSection
-                  title="점검 전 내부 사진 (발매트, 컵홀더)"
+                  title="점검 전 내부 사진 (컵홀더, 발매트 등)"
                   photos={beforeInteriorPhotos}
                   onPhotosChange={setBeforeInteriorPhotos}
                   required
@@ -784,13 +784,13 @@ function InspectionForm() {
               <div className="pl-1">
                 <label className="block text-sm text-gray-600 mb-2">경고등</label>
                 <div className="flex flex-wrap gap-1.5">
-                  {['없음', '엔진', '공기압', '주유', '라이트', '기타(주관식)'].map((item) => (
+                  {['없음', '엔진', '공기압', '주유', '라이트', '기타'].map((item) => (
                     <button
                       key={item}
                       type="button"
                       onClick={() => {
                         toggleMultiSelect(item, warningLights, setWarningLights);
-                        if (item === '기타(주관식)' && warningLights.includes('기타(주관식)')) {
+                        if (item === '기타' && warningLights.includes('기타')) {
                           setWarningLightOther('');
                         }
                       }}
@@ -804,7 +804,7 @@ function InspectionForm() {
                     </button>
                   ))}
                 </div>
-                {warningLights.includes('기타(주관식)') && (
+                {warningLights.includes('기타') && (
                   <input
                     type="text"
                     value={warningLightOther}
@@ -855,7 +855,7 @@ function InspectionForm() {
                 required
               />
               <InteriorMultiPhotoSection
-                title="점검 후 내부 사진 (발매트, 컵홀더)"
+                title="점검 후 내부 사진 (컵홀더, 발매트 등)"
                 photos={afterInteriorPhotos}
                 onPhotosChange={setAfterInteriorPhotos}
                 required
