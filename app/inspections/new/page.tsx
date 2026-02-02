@@ -83,6 +83,7 @@ function InspectionForm() {
   const [wiperWasher, setWiperWasher] = useState<string[]>([]); // 와이퍼/워셔액
   const [warningLights, setWarningLights] = useState<string[]>([]); // 경고등
   const [warningLightOther, setWarningLightOther] = useState(''); // 경고등 기타 내용
+  const [amenity, setAmenity] = useState<string>(''); // 행잉태그/어메니티 비치 여부
   const [memo, setMemo] = useState(''); // 특이사항
 
   // 외관 사진 (전/후/좌/우만)
@@ -208,6 +209,7 @@ function InspectionForm() {
               warningLights: warningLights.map(item =>
                 item === '기타' && warningLightOther ? `기타: ${warningLightOther}` : item
               ),
+              amenity,
             },
         // 사진이 있으면 기본 영역 생성
         areas: hasPhotos ? [
@@ -813,6 +815,19 @@ function InspectionForm() {
                     className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 )}
+              </div>
+
+              {/* 행잉태그/어메니티 비치 여부 */}
+              <div className="pl-1">
+                <label className="block text-sm text-gray-600 mb-2">행잉태그/어메니티(생수,손소독제 등) 비치</label>
+                <div className="flex gap-2">
+                  <SelectButton selected={amenity === 'O'} onClick={() => setAmenity('O')} color="green">
+                    O
+                  </SelectButton>
+                  <SelectButton selected={amenity === 'X'} onClick={() => setAmenity('X')} color="red">
+                    X
+                  </SelectButton>
+                </div>
               </div>
 
               {/* 사진 촬영 가이드 */}

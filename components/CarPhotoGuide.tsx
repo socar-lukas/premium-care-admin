@@ -219,11 +219,11 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
               </div>
             )}
             {/* 추가/삭제 버튼 */}
-            <div className="absolute top-0.5 right-0.5 flex gap-0.5">
+            <div className="absolute top-0 right-0 flex">
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
-                className="w-4 h-4 bg-blue-500 text-white rounded-full flex items-center justify-center shadow text-[10px] leading-none"
+                className="w-3 h-3 bg-blue-500/80 text-white rounded-full flex items-center justify-center text-[8px] leading-none"
                 title="사진 추가"
               >
                 +
@@ -231,11 +231,11 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
               <button
                 type="button"
                 onClick={() => handleRemove(0)}
-                className="w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center shadow"
+                className="w-3 h-3 bg-red-500/80 text-white rounded-full flex items-center justify-center"
                 title="삭제"
               >
-                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
@@ -251,12 +251,12 @@ export function MultiPhotoUploadCard({ guide, photos, onPhotosChange, required }
               <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
             ) : (
               <>
-                <div className="w-10 h-8 mb-1 opacity-50">
+                <div className="w-8 h-6 mb-0.5 opacity-50">
                   <CarSilhouette angle={guide.type} />
                 </div>
-                <div className="w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center shadow">
-                  <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <div className="w-4 h-4 bg-blue-500 text-white rounded-full flex items-center justify-center">
+                  <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
                   </svg>
                 </div>
               </>
@@ -448,10 +448,10 @@ export function InteriorMultiPhotoSection({ title, photos, onPhotosChange, requi
                 <button
                   type="button"
                   onClick={() => handleRemove(index)}
-                  className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center shadow"
+                  className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500/80 text-white rounded-full flex items-center justify-center"
                 >
-                  <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
