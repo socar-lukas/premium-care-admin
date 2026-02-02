@@ -25,7 +25,7 @@ interface ReservationStatsResponse {
   inUseCarNums?: string[];
   upcomingCarNums?: string[];
   needsInspectionCarNums?: string[];
-  vehicleStatusMap?: Record<string, { status: '운행중' | '대기중'; needsInspection: boolean; carName: string }>;
+  vehicleStatusMap?: Record<string, { status: '운행중' | '대기중'; needsInspection: boolean; carName: string; reservationStart?: string }>;
 }
 
 interface VehiclesResponse {
@@ -77,7 +77,7 @@ export default function Home() {
     inUseCarNums: [] as string[],
     upcomingCarNums: [] as string[],
     needsInspectionCarNums: [] as string[],
-    vehicleStatusMap: {} as Record<string, { status: '운행중' | '대기중'; needsInspection: boolean; carName: string }>,
+    vehicleStatusMap: {} as Record<string, { status: '운행중' | '대기중'; needsInspection: boolean; carName: string; reservationStart?: string }>,
   });
   const [activeFilter, setActiveFilter] = useState<'all' | 'inUse' | 'upcoming' | 'needsInspection'>('all');
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
@@ -367,13 +367,28 @@ export default function Home() {
     // 합치기
     const allVehicles = [...uniqueDbVehicles, ...placeholderVehicles];
 
-    // 정렬: 점검필요 먼저, 그 다음 차량번호 오름차순
+    // 정렬: 점검필요 먼저, 그 안에서 세차가능 마감시간(예약-4시간) 남은시간 오름차순
     return allVehicles.sort((a, b) => {
       const aNeedsInspection = statusMap[a.vehicleNumber]?.needsInspection || false;
       const bNeedsInspection = statusMap[b.vehicleNumber]?.needsInspection || false;
 
+      // 점검필요 우선
       if (aNeedsInspection && !bNeedsInspection) return -1;
       if (!aNeedsInspection && bNeedsInspection) return 1;
+
+      // 둘 다 점검필요인 경우, 세차가능 마감시간 기준 정렬
+      if (aNeedsInspection && bNeedsInspection) {
+        const aStart = statusMap[a.vehicleNumber]?.reservationStart;
+        const bStart = statusMap[b.vehicleNumber]?.reservationStart;
+        if (aStart && bStart) {
+          // 예약시작 - 4시간이 마감시간
+          const aDeadline = new Date(aStart).getTime() - 4 * 60 * 60 * 1000;
+          const bDeadline = new Date(bStart).getTime() - 4 * 60 * 60 * 1000;
+          return aDeadline - bDeadline; // 마감 임박한 것 먼저
+        }
+        if (aStart && !bStart) return -1;
+        if (!aStart && bStart) return 1;
+      }
 
       return a.vehicleNumber.localeCompare(b.vehicleNumber, 'ko');
     });
@@ -755,11 +770,34 @@ export default function Home() {
                             </div>
                           )}
                         </div>
-                        {/* 최근 점검일 */}
+                        {/* 최근 점검일 (시간 포함) */}
                         {vehicle.inspections && vehicle.inspections[0] && (
                           <p className="text-xs text-gray-500 mt-1">
-                            점검: {new Date(vehicle.inspections[0].inspectionDate).toLocaleDateString('ko-KR')}
+                            점검: {new Date(vehicle.inspections[0].inspectionDate).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                           </p>
+                        )}
+                        {/* D+1 예약 시작일 & 세차가능 남은시간 */}
+                        {vehicleStatus?.reservationStart && (
+                          <div className="text-xs mt-1">
+                            <span className="text-orange-600">
+                              예약: {new Date(vehicleStatus.reservationStart).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {needsInspection && (() => {
+                              const deadline = new Date(vehicleStatus.reservationStart).getTime() - 4 * 60 * 60 * 1000;
+                              const remaining = deadline - Date.now();
+                              if (remaining > 0) {
+                                const hours = Math.floor(remaining / (60 * 60 * 1000));
+                                const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+                                return (
+                                  <span className={`ml-2 font-medium ${hours < 2 ? 'text-red-600' : 'text-blue-600'}`}>
+                                    (세차 {hours}시간 {mins}분 남음)
+                                  </span>
+                                );
+                              } else {
+                                return <span className="ml-2 font-medium text-red-600">(세차 마감)</span>;
+                              }
+                            })()}
+                          </div>
                         )}
                         {/* 상태 태그 */}
                         <div className="flex flex-wrap gap-1.5 mt-2">
@@ -826,10 +864,13 @@ export default function Home() {
                           최근 점검일
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          예약 상태
+                          D+1 예약
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          점검
+                          세차 마감
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          상태
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           작업
@@ -866,32 +907,54 @@ export default function Home() {
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                             {vehicle.inspections && vehicle.inspections[0] ? (
-                              new Date(vehicle.inspections[0].inspectionDate).toLocaleDateString('ko-KR')
+                              new Date(vehicle.inspections[0].inspectionDate).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-orange-600">
+                            {vehicleStatus?.reservationStart ? (
+                              new Date(vehicleStatus.reservationStart).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm">
-                            {vehicleStatus ? (
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                isInUse
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-gray-100 text-gray-600'
-                              }`}>
-                                {isInUse ? '운행중' : '대기중'}
-                              </span>
-                            ) : (
+                            {vehicleStatus?.reservationStart && needsInspection ? (() => {
+                              const deadline = new Date(vehicleStatus.reservationStart).getTime() - 4 * 60 * 60 * 1000;
+                              const remaining = deadline - Date.now();
+                              if (remaining > 0) {
+                                const hours = Math.floor(remaining / (60 * 60 * 1000));
+                                const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+                                return (
+                                  <span className={`font-medium ${hours < 2 ? 'text-red-600' : 'text-blue-600'}`}>
+                                    {hours}시간 {mins}분
+                                  </span>
+                                );
+                              } else {
+                                return <span className="font-medium text-red-600">마감</span>;
+                              }
+                            })() : (
                               <span className="text-gray-400">-</span>
                             )}
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm">
-                            {needsInspection ? (
-                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                                점검필요
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
+                            <div className="flex gap-1">
+                              {vehicleStatus && (
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  isInUse
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {isInUse ? '운행중' : '대기중'}
+                                </span>
+                              )}
+                              {needsInspection && (
+                                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                  점검필요
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                             {isPlaceholder ? (

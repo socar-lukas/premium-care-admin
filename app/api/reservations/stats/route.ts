@@ -188,12 +188,23 @@ export async function GET() {
     }
 
     // 차량별 예약 상태 정보 (차량 목록에서 사용)
-    // 각 차량의 현재 상태: 운행중 / 대기중 + 차량명
+    // 각 차량의 현재 상태: 운행중 / 대기중 + 차량명 + 예약시작시간
     const vehicleStatusMap: Record<string, {
       status: '운행중' | '대기중';
       needsInspection: boolean;
       carName: string;
+      reservationStart?: string; // ISO 문자열
     }> = {};
+
+    // D+1 예약 차량별 가장 빠른 예약 시작 시간 저장
+    const earliestReservationMap: Record<string, Date> = {};
+    for (const r of upcomingReservations) {
+      if (r.start_at_kst) {
+        if (!earliestReservationMap[r.car_num] || r.start_at_kst < earliestReservationMap[r.car_num]) {
+          earliestReservationMap[r.car_num] = r.start_at_kst;
+        }
+      }
+    }
 
     // 모든 예약 데이터에서 차량별 상태 계산
     for (const r of reservations) {
@@ -231,6 +242,13 @@ export async function GET() {
           needsInspection: true,
           carName: r.car_name || ''
         };
+      }
+    }
+
+    // 예약 시작 시간 추가 (D+1 예약 차량)
+    for (const carNum of Object.keys(earliestReservationMap)) {
+      if (vehicleStatusMap[carNum]) {
+        vehicleStatusMap[carNum].reservationStart = earliestReservationMap[carNum].toISOString();
       }
     }
 
