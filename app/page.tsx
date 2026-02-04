@@ -601,7 +601,7 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h3 className="text-xs font-semibold text-gray-600">D+1 예약</h3>
+                <h3 className="text-xs font-semibold text-gray-600">24시간 내 출차예정</h3>
               </div>
               <p className="text-2xl md:text-3xl font-bold" style={{ color: '#EA580C' }}>
                 {reservationStats.upcomingReservationsCount}
@@ -622,7 +622,7 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
-                <h3 className="text-xs font-semibold text-gray-600">D+1 점검 필요</h3>
+                <h3 className="text-xs font-semibold text-gray-600">24시간 내 점검필요</h3>
               </div>
               <p className="text-2xl md:text-3xl font-bold" style={{ color: '#DC2626' }}>
                 {reservationStats.needsInspectionCount}
@@ -692,7 +692,7 @@ export default function Home() {
                       color: activeFilter === 'inUse' ? '#16A34A' : activeFilter === 'upcoming' ? '#EA580C' : '#DC2626'
                     }}
                   >
-                    <span>{activeFilter === 'inUse' ? '운행중' : activeFilter === 'upcoming' ? 'D+1 예약' : 'D+1 점검 필요'}</span>
+                    <span>{activeFilter === 'inUse' ? '운행중' : activeFilter === 'upcoming' ? '24시간 내 출차예정' : '24시간 내 점검필요'}</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -780,7 +780,7 @@ export default function Home() {
                         {vehicleStatus?.reservationStart && (
                           <div className="text-xs mt-1">
                             <span className="text-orange-600">
-                              예약: {new Date(vehicleStatus.reservationStart).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                              출차시간: {new Date(vehicleStatus.reservationStart).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                             </span>
                             {needsInspection && (() => {
                               const deadline = new Date(vehicleStatus.reservationStart).getTime() - 4 * 60 * 60 * 1000;
@@ -790,11 +790,11 @@ export default function Home() {
                                 const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
                                 return (
                                   <span className={`ml-2 font-medium ${hours < 2 ? 'text-red-600' : 'text-blue-600'}`}>
-                                    (세차 {hours}시간 {mins}분 남음)
+                                    (세차점검 {hours}시간 {mins}분 남음)
                                   </span>
                                 );
                               } else {
-                                return <span className="ml-2 font-medium text-red-600">(세차 마감)</span>;
+                                return <span className="ml-2 font-medium text-red-600">(세차점검 마감)</span>;
                               }
                             })()}
                           </div>
@@ -864,10 +864,10 @@ export default function Home() {
                           최근 점검일
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          D+1 예약
+                          출차시간
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          세차 마감
+                          출차까지 남은 시간
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           상태
