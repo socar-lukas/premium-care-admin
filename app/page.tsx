@@ -780,7 +780,7 @@ export default function Home() {
                         {vehicleStatus?.reservationStart && (
                           <div className="text-xs mt-1">
                             <span className="text-orange-600">
-                              출차시간: {new Date(vehicleStatus.reservationStart).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                              출차시간: {new Date(new Date(vehicleStatus.reservationStart).getTime() - 4 * 60 * 60 * 1000).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                             </span>
                             {needsInspection && (() => {
                               const deadline = new Date(vehicleStatus.reservationStart).getTime() - 4 * 60 * 60 * 1000;
@@ -914,7 +914,7 @@ export default function Home() {
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-orange-600">
                             {vehicleStatus?.reservationStart ? (
-                              new Date(vehicleStatus.reservationStart).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                              new Date(new Date(vehicleStatus.reservationStart).getTime() - 4 * 60 * 60 * 1000).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}
