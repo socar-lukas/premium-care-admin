@@ -102,13 +102,14 @@ export async function GET() {
     console.log('Current time (UTC):', now.toISOString());
     console.log('Next 24 hours (UTC):', next24Hours.toISOString());
 
-    // 1. 현재 운행중 차량: state가 "운행중" 이거나 현재 시간이 start~end 사이인 차량
+    // 1. 현재 운행중 차량: state가 "운행중" 이거나 예약시작 4시간 전부터 end 사이인 차량
     const inUseVehicles = reservations.filter(r => {
       // state가 "운행중"이면 운행중
       if (r.state === '운행중') return true;
-      // 현재 시간이 start~end 사이이면 운행중
+      // 예약시작 4시간 전부터 end 사이이면 운행중
       if (r.start_at_kst && r.end_at_kst) {
-        return now >= r.start_at_kst && now <= r.end_at_kst;
+        const fourHoursBefore = new Date(r.start_at_kst.getTime() - 4 * 60 * 60 * 1000);
+        return now >= fourHoursBefore && now <= r.end_at_kst;
       }
       return false;
     });
@@ -188,12 +189,13 @@ export async function GET() {
     }
 
     // 차량별 예약 상태 정보 (차량 목록에서 사용)
-    // 각 차량의 현재 상태: 운행중 / 대기중 + 차량명 + 예약시작시간
+    // 각 차량의 현재 상태: 운행중 / 대기중 + 차량명 + 예약시작시간 + 다음예약시작시간
     const vehicleStatusMap: Record<string, {
       status: '운행중' | '대기중';
       needsInspection: boolean;
       carName: string;
-      reservationStart?: string; // ISO 문자열
+      reservationStart?: string; // ISO 문자열 (현재/다음 예약 시작시간)
+      nextReservationStart?: string; // ISO 문자열 (운행중인 경우 다음 예약 시작시간)
     }> = {};
 
     // D+1 예약 차량별 가장 빠른 예약 시작 시간 저장
@@ -207,17 +209,48 @@ export async function GET() {
     }
 
     // 모든 예약 데이터에서 차량별 상태 계산
+    // 먼저 차량별로 예약을 시간순 정렬
+    const reservationsByCarNum: Record<string, Reservation[]> = {};
     for (const r of reservations) {
+      if (!reservationsByCarNum[r.car_num]) {
+        reservationsByCarNum[r.car_num] = [];
+      }
+      reservationsByCarNum[r.car_num].push(r);
+    }
+    // 각 차량의 예약을 시작시간 기준 정렬
+    for (const carNum of Object.keys(reservationsByCarNum)) {
+      reservationsByCarNum[carNum].sort((a, b) => {
+        if (!a.start_at_kst) return 1;
+        if (!b.start_at_kst) return -1;
+        return a.start_at_kst.getTime() - b.start_at_kst.getTime();
+      });
+    }
+
+    for (const r of reservations) {
+      // 운행중 판단: state가 "운행중" 이거나 예약시작 4시간 전부터 end 사이
+      const fourHoursBefore = r.start_at_kst ? new Date(r.start_at_kst.getTime() - 4 * 60 * 60 * 1000) : null;
       const isInUse = r.state === '운행중' ||
-        (r.start_at_kst && r.end_at_kst && now >= r.start_at_kst && now <= r.end_at_kst);
+        (fourHoursBefore && r.end_at_kst && now >= fourHoursBefore && now <= r.end_at_kst);
 
       // 운행중이면 무조건 운행중으로 설정 (우선순위 높음)
       if (isInUse) {
+        // 운행중인 차량의 다음 예약 찾기
+        const carReservations = reservationsByCarNum[r.car_num] || [];
+        const nextReservation = carReservations.find(nr => {
+          if (!nr.start_at_kst) return false;
+          // 현재 운행중인 예약 이후의 예약 찾기
+          if (r.end_at_kst) {
+            return nr.start_at_kst > r.end_at_kst;
+          }
+          return nr.start_at_kst > now;
+        });
+
         vehicleStatusMap[r.car_num] = {
           ...vehicleStatusMap[r.car_num],
           status: '운행중',
           needsInspection: vehicleStatusMap[r.car_num]?.needsInspection || false,
-          carName: r.car_name || vehicleStatusMap[r.car_num]?.carName || ''
+          carName: r.car_name || vehicleStatusMap[r.car_num]?.carName || '',
+          nextReservationStart: nextReservation?.start_at_kst?.toISOString()
         };
       } else if (!vehicleStatusMap[r.car_num]) {
         // 아직 상태가 없으면 대기중으로 설정

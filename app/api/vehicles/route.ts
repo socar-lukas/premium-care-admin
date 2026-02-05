@@ -41,24 +41,15 @@ export async function GET(request: NextRequest) {
         where = { vehicleNumber: { in: numbers } };
       }
     } else if (search) {
-      // 한글이 포함된 경우 차량번호 정확히 일치 우선
-      const hasKorean = /[가-힣]/.test(search);
-
-      if (hasKorean) {
-        // 차량번호 형식으로 보이면 정확히 일치하는 것 찾기
-        where = {
-          vehicleNumber: { equals: search, mode: 'insensitive' as const },
-        };
-      } else {
-        // 숫자/영문만 있으면 부분 검색 (차량번호 뒤 4자리 등)
-        where = {
-          OR: [
-            { vehicleNumber: { contains: search, mode: 'insensitive' as const } },
-            { ownerName: { contains: search, mode: 'insensitive' as const } },
-            { model: { contains: search, mode: 'insensitive' as const } },
-          ],
-        };
-      }
+      // 모든 검색어에 대해 차량번호, 소유자명, 모델명 부분 검색
+      where = {
+        OR: [
+          { vehicleNumber: { contains: search, mode: 'insensitive' as const } },
+          { ownerName: { contains: search, mode: 'insensitive' as const } },
+          { model: { contains: search, mode: 'insensitive' as const } },
+          { manufacturer: { contains: search, mode: 'insensitive' as const } },
+        ],
+      };
     }
 
     const selectFields = {
