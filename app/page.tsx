@@ -374,8 +374,8 @@ export default function Home() {
       }
     }
 
-    // 점검필요 차량 중 DB에 없는 차량 추가 (placeholder)
-    const placeholderVehicles: Vehicle[] = reservationStats.needsInspectionCarNums
+    // 점검필요 차량 중 DB에 없는 차량 추가 (placeholder) - 검색 중에는 추가하지 않음
+    const placeholderVehicles: Vehicle[] = search ? [] : reservationStats.needsInspectionCarNums
       .filter(num => !dbVehicleNumbers.has(num))
       .map(num => ({
         id: `placeholder-${num}`,
