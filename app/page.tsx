@@ -143,6 +143,7 @@ export default function Home() {
   // 검색어가 변경되면 페이지 리셋하고 새로 fetch
   useEffect(() => {
     if (search !== '') {
+      setActiveFilter('all'); // 검색 시 필터 해제
       setPage(1);
       setVehicles([]);
       setHasMore(true);
@@ -301,16 +302,37 @@ export default function Home() {
       // 모든 차량 합치기
       const allVehicles = [...dbVehicles, ...placeholderVehicles];
 
-      // 정렬: 점검필요 먼저, 그 다음 차량번호 오름차순
+      // 정렬 순서: 1. 출차시간 임박 (점검필요 포함) > 2. 운행중 > 3. 나머지
       allVehicles.sort((a, b) => {
-        const aNeedsInspection = statusMap[a.vehicleNumber]?.needsInspection || false;
-        const bNeedsInspection = statusMap[b.vehicleNumber]?.needsInspection || false;
+        const aStatus = statusMap[a.vehicleNumber];
+        const bStatus = statusMap[b.vehicleNumber];
+        const aNeedsInspection = aStatus?.needsInspection || false;
+        const bNeedsInspection = bStatus?.needsInspection || false;
+        const aIsInUse = aStatus?.status === '운행중';
+        const bIsInUse = bStatus?.status === '운행중';
+        const aStart = aStatus?.reservationStart;
+        const bStart = bStatus?.reservationStart;
 
-        // 점검필요 차량 먼저
-        if (aNeedsInspection && !bNeedsInspection) return -1;
-        if (!aNeedsInspection && bNeedsInspection) return 1;
+        // 출차시간이 있는 차량 (점검필요 = 출차 예정)
+        const aHasDeparture = aNeedsInspection && aStart;
+        const bHasDeparture = bNeedsInspection && bStart;
 
-        // 그 다음 차량번호 오름차순
+        // 1순위: 출차시간 임박한 차량 (점검필요 + 예약 있음)
+        if (aHasDeparture && !bHasDeparture) return -1;
+        if (!aHasDeparture && bHasDeparture) return 1;
+
+        // 둘 다 출차시간이 있으면 마감 임박 순
+        if (aHasDeparture && bHasDeparture) {
+          const aDeadline = new Date(aStart).getTime() - 4 * 60 * 60 * 1000;
+          const bDeadline = new Date(bStart).getTime() - 4 * 60 * 60 * 1000;
+          return aDeadline - bDeadline;
+        }
+
+        // 2순위: 운행중 차량
+        if (aIsInUse && !bIsInUse) return -1;
+        if (!aIsInUse && bIsInUse) return 1;
+
+        // 3순위: 나머지는 차량번호 순
         return a.vehicleNumber.localeCompare(b.vehicleNumber, 'ko');
       });
 
