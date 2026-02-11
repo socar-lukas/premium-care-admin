@@ -27,7 +27,21 @@ interface ReservationStatsResponse {
   upcomingCarNums?: string[];
   needsInspectionCarNums?: string[];
   needsInspection72HCarNums?: string[];
-  vehicleStatusMap?: Record<string, { status: '운행중' | '대기중'; needsInspection: boolean; needs72HInspection: boolean; carName: string; reservationStart?: string; nextReservationStart?: string; lastReturnDate?: string }>;
+  vehicleStatusMap?: Record<string, { status: '운행중' | '대기중'; needsInspection: boolean; needs72HInspection: boolean; carName: string; reservationStart?: string; nextReservationStart?: string; reservationEnd?: string; lastReturnDate?: string }>;
+}
+
+// 요일 배열
+const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+
+// 날짜 포맷팅 (M/D(요일) HH시MM분)
+function formatDateTime(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const dayName = DAY_NAMES[d.getDay()];
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${month}/${day}(${dayName}) ${hours}시${minutes}분`;
 }
 
 interface VehiclesResponse {
@@ -81,9 +95,10 @@ export default function Home() {
     upcomingCarNums: [] as string[],
     needsInspectionCarNums: [] as string[],
     needsInspection72HCarNums: [] as string[],
-    vehicleStatusMap: {} as Record<string, { status: '운행중' | '대기중'; needsInspection: boolean; needs72HInspection: boolean; carName: string; reservationStart?: string; nextReservationStart?: string; lastReturnDate?: string }>,
+    vehicleStatusMap: {} as Record<string, { status: '운행중' | '대기중'; needsInspection: boolean; needs72HInspection: boolean; carName: string; reservationStart?: string; nextReservationStart?: string; reservationEnd?: string; lastReturnDate?: string }>,
   });
   const [activeFilter, setActiveFilter] = useState<'all' | 'inUse' | 'upcoming' | 'needsInspection' | 'needsInspection72H'>('all');
+  const [sortOrder, setSortOrder] = useState<'departure' | 'return'>('departure');
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [loadingFiltered, setLoadingFiltered] = useState(false);
   const [statsLoaded, setStatsLoaded] = useState(false);
@@ -305,44 +320,9 @@ export default function Home() {
           inspections: [],
         }));
 
-      // 모든 차량 합치기
+      // 모든 차량 합치기 및 정렬
       const allVehicles = [...dbVehicles, ...placeholderVehicles];
-
-      // 정렬 순서: 1. 출차시간 임박 (점검필요 포함) > 2. 운행중 > 3. 나머지
-      allVehicles.sort((a, b) => {
-        const aStatus = statusMap[a.vehicleNumber];
-        const bStatus = statusMap[b.vehicleNumber];
-        const aNeedsInspection = aStatus?.needsInspection || false;
-        const bNeedsInspection = bStatus?.needsInspection || false;
-        const aIsInUse = aStatus?.status === '운행중';
-        const bIsInUse = bStatus?.status === '운행중';
-        const aStart = aStatus?.reservationStart;
-        const bStart = bStatus?.reservationStart;
-
-        // 출차시간이 있는 차량 (점검필요 = 출차 예정)
-        const aHasDeparture = aNeedsInspection && aStart;
-        const bHasDeparture = bNeedsInspection && bStart;
-
-        // 1순위: 출차시간 임박한 차량 (점검필요 + 예약 있음)
-        if (aHasDeparture && !bHasDeparture) return -1;
-        if (!aHasDeparture && bHasDeparture) return 1;
-
-        // 둘 다 출차시간이 있으면 마감 임박 순
-        if (aHasDeparture && bHasDeparture) {
-          const aDeadline = new Date(aStart).getTime() - 4 * 60 * 60 * 1000;
-          const bDeadline = new Date(bStart).getTime() - 4 * 60 * 60 * 1000;
-          return aDeadline - bDeadline;
-        }
-
-        // 2순위: 운행중 차량
-        if (aIsInUse && !bIsInUse) return -1;
-        if (!aIsInUse && bIsInUse) return 1;
-
-        // 3순위: 나머지는 차량번호 순
-        return a.vehicleNumber.localeCompare(b.vehicleNumber, 'ko');
-      });
-
-      setFilteredVehicles(allVehicles);
+      setFilteredVehicles(sortVehicles(allVehicles, statusMap));
     } catch (error) {
       console.error('Error fetching filtered vehicles:', error);
       setFilteredVehicles([]);
@@ -365,7 +345,60 @@ export default function Home() {
     } else {
       setFilteredVehicles([]);
     }
-  }, [activeFilter, reservationStats]);
+  }, [activeFilter, reservationStats, sortOrder]);
+
+  // 차량 정렬 함수
+  const sortVehicles = (vehicleList: Vehicle[], statusMap: typeof reservationStats.vehicleStatusMap) => {
+    return vehicleList.sort((a, b) => {
+      const aStatus = statusMap[a.vehicleNumber];
+      const bStatus = statusMap[b.vehicleNumber];
+      const aIsInUse = aStatus?.status === '운행중';
+      const bIsInUse = bStatus?.status === '운행중';
+      const aStart = aStatus?.reservationStart;
+      const bStart = bStatus?.reservationStart;
+      const aEnd = aStatus?.reservationEnd;
+      const bEnd = bStatus?.reservationEnd;
+      const aLastReturn = aStatus?.lastReturnDate;
+      const bLastReturn = bStatus?.lastReturnDate;
+
+      if (sortOrder === 'return') {
+        // 복귀예정순: 운행중 차량의 복귀예정 시간 순
+        const aReturnTime = aIsInUse ? aEnd : aLastReturn;
+        const bReturnTime = bIsInUse ? bEnd : bLastReturn;
+
+        // 복귀시간이 있는 차량 우선
+        if (aReturnTime && !bReturnTime) return -1;
+        if (!aReturnTime && bReturnTime) return 1;
+        if (aReturnTime && bReturnTime) {
+          return new Date(aReturnTime).getTime() - new Date(bReturnTime).getTime();
+        }
+        return a.vehicleNumber.localeCompare(b.vehicleNumber, 'ko');
+      }
+
+      // 출차시간순 (기본): 출차시간 임박 > 운행중 > 그외
+      // 출차시간이 있는 대기중 차량
+      const aHasDeparture = !aIsInUse && aStart;
+      const bHasDeparture = !bIsInUse && bStart;
+
+      // 1순위: 출차시간 임박한 대기중 차량
+      if (aHasDeparture && !bHasDeparture && !bIsInUse) return -1;
+      if (!aHasDeparture && bHasDeparture && !aIsInUse) return 1;
+      if (aHasDeparture && bIsInUse) return -1;
+      if (aIsInUse && bHasDeparture) return 1;
+
+      // 둘 다 출차시간이 있으면 임박 순
+      if (aHasDeparture && bHasDeparture) {
+        return new Date(aStart).getTime() - new Date(bStart).getTime();
+      }
+
+      // 2순위: 운행중 차량
+      if (aIsInUse && !bIsInUse) return -1;
+      if (!aIsInUse && bIsInUse) return 1;
+
+      // 3순위: 나머지는 차량번호 순
+      return a.vehicleNumber.localeCompare(b.vehicleNumber, 'ko');
+    });
+  };
 
   // 전체 목록용 차량 계산 (DB 차량 + 미등록 점검필요 차량)
   const getAllVehiclesWithPlaceholders = () => {
@@ -394,42 +427,9 @@ export default function Home() {
         inspections: [],
       }));
 
-    // 합치기
+    // 합치기 및 정렬
     const allVehicles = [...uniqueDbVehicles, ...placeholderVehicles];
-
-    // 정렬 순서: 1. 출차시간 임박 (점검필요 포함) > 2. 운행중 > 3. 나머지
-    return allVehicles.sort((a, b) => {
-      const aStatus = statusMap[a.vehicleNumber];
-      const bStatus = statusMap[b.vehicleNumber];
-      const aNeedsInspection = aStatus?.needsInspection || false;
-      const bNeedsInspection = bStatus?.needsInspection || false;
-      const aIsInUse = aStatus?.status === '운행중';
-      const bIsInUse = bStatus?.status === '운행중';
-      const aStart = aStatus?.reservationStart;
-      const bStart = bStatus?.reservationStart;
-
-      // 출차시간이 있는 차량 (점검필요 = 출차 예정)
-      const aHasDeparture = aNeedsInspection && aStart;
-      const bHasDeparture = bNeedsInspection && bStart;
-
-      // 1순위: 출차시간 임박한 차량 (점검필요 + 예약 있음)
-      if (aHasDeparture && !bHasDeparture) return -1;
-      if (!aHasDeparture && bHasDeparture) return 1;
-
-      // 둘 다 출차시간이 있으면 마감 임박 순
-      if (aHasDeparture && bHasDeparture) {
-        const aDeadline = new Date(aStart).getTime() - 4 * 60 * 60 * 1000;
-        const bDeadline = new Date(bStart).getTime() - 4 * 60 * 60 * 1000;
-        return aDeadline - bDeadline;
-      }
-
-      // 2순위: 운행중 차량
-      if (aIsInUse && !bIsInUse) return -1;
-      if (!aIsInUse && bIsInUse) return 1;
-
-      // 3순위: 나머지는 차량번호 순
-      return a.vehicleNumber.localeCompare(b.vehicleNumber, 'ko');
-    });
+    return sortVehicles(allVehicles, statusMap);
   };
 
   const displayVehicles = activeFilter !== 'all' ? filteredVehicles : getAllVehiclesWithPlaceholders();
@@ -748,6 +748,15 @@ export default function Home() {
                     </svg>
                   </button>
                 )}
+                {/* 정렬 드롭다운 */}
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as 'departure' | 'return')}
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="departure">출차시간순</option>
+                  <option value="return">복귀예정순</option>
+                </select>
               </div>
             </div>
             {(loading || loadingFiltered) ? (
@@ -820,18 +829,25 @@ export default function Home() {
                             </div>
                           )}
                         </div>
-                        {/* 최근 점검일 & 복귀일 */}
+                        {/* 최근 점검일 & 복귀시간 */}
                         <div className="flex flex-wrap gap-x-3 mt-1">
                           {vehicle.inspections && vehicle.inspections[0] && (
                             <p className="text-xs text-gray-500">
-                              점검: {new Date(vehicle.inspections[0].inspectionDate).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                              점검: {formatDateTime(vehicle.inspections[0].inspectionDate)}
                             </p>
                           )}
-                          {vehicleStatus?.lastReturnDate && (
-                            <p className="text-xs text-gray-500">
-                              복귀: {new Date(vehicleStatus.lastReturnDate).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                          )}
+                          {(() => {
+                            // 운행중: 복귀 예정 시간, 대기중: 최근 복귀 시간
+                            const returnTime = isInUse
+                              ? vehicleStatus?.reservationEnd
+                              : vehicleStatus?.lastReturnDate;
+                            if (!returnTime) return null;
+                            return (
+                              <p className={`text-xs ${isInUse ? 'text-purple-600' : 'text-gray-500'}`}>
+                                복귀: {formatDateTime(returnTime)}
+                              </p>
+                            );
+                          })()}
                         </div>
                         {/* 출차시간: 운행중이면 다음예약, 아니면 현재예약 기준 */}
                         {(() => {
@@ -846,7 +862,7 @@ export default function Home() {
                             <div className="text-xs mt-1">
                               <span className="text-orange-600">
                                 {isInUse ? '다음 출차: ' : '출차시간: '}
-                                {new Date(new Date(targetReservation).getTime() - 4 * 60 * 60 * 1000).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                {formatDateTime(new Date(new Date(targetReservation).getTime() - 4 * 60 * 60 * 1000))}
                               </span>
                               {needsInspection && !isInUse && (() => {
                                 const deadline = new Date(targetReservation).getTime() - 4 * 60 * 60 * 1000;
@@ -931,7 +947,7 @@ export default function Home() {
                           최근 점검일
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          최근 복귀일
+                          복귀시간
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           출차시간
@@ -977,17 +993,20 @@ export default function Home() {
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                             {vehicle.inspections && vehicle.inspections[0] ? (
-                              new Date(vehicle.inspections[0].inspectionDate).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                              formatDateTime(vehicle.inspections[0].inspectionDate)
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {vehicleStatus?.lastReturnDate ? (
-                              new Date(vehicleStatus.lastReturnDate).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
+                            {(() => {
+                              // 운행중: 복귀 예정 시간, 대기중: 최근 복귀 시간
+                              const returnTime = isInUse
+                                ? vehicleStatus?.reservationEnd
+                                : vehicleStatus?.lastReturnDate;
+                              if (!returnTime) return <span className="text-gray-400">-</span>;
+                              return <span className={isInUse ? 'text-purple-600' : ''}>{formatDateTime(returnTime)}</span>;
+                            })()}
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-orange-600">
                             {(() => {
@@ -996,7 +1015,7 @@ export default function Home() {
                                 ? vehicleStatus?.nextReservationStart
                                 : vehicleStatus?.reservationStart;
                               if (!targetReservation) return <span className="text-gray-400">-</span>;
-                              return new Date(new Date(targetReservation).getTime() - 4 * 60 * 60 * 1000).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                              return formatDateTime(new Date(new Date(targetReservation).getTime() - 4 * 60 * 60 * 1000));
                             })()}
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm">

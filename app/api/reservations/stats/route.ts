@@ -258,7 +258,8 @@ export async function GET() {
       carName: string;
       reservationStart?: string;
       nextReservationStart?: string;
-      lastReturnDate?: string;
+      reservationEnd?: string; // 운행중 차량의 복귀 예정 시간
+      lastReturnDate?: string; // 대기중 차량의 최근 복귀 시간
     }> = {};
 
     // 차량별 최근 복귀일 계산
@@ -318,7 +319,8 @@ export async function GET() {
           needsInspection: vehicleStatusMap[r.car_num]?.needsInspection || false,
           needs72HInspection: vehicleStatusMap[r.car_num]?.needs72HInspection || false,
           carName: r.car_name || vehicleStatusMap[r.car_num]?.carName || '',
-          nextReservationStart: nextReservation?.start_at_kst?.toISOString()
+          nextReservationStart: nextReservation?.start_at_kst?.toISOString(),
+          reservationEnd: r.end_at_kst?.toISOString() // 현재 운행의 복귀 예정 시간
         };
       } else if (!vehicleStatusMap[r.car_num]) {
         vehicleStatusMap[r.car_num] = {
