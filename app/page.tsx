@@ -352,43 +352,47 @@ export default function Home() {
     return vehicleList.sort((a, b) => {
       const aStatus = statusMap[a.vehicleNumber];
       const bStatus = statusMap[b.vehicleNumber];
+      const aNeedsInspection = aStatus?.needsInspection || false;
+      const bNeedsInspection = bStatus?.needsInspection || false;
       const aIsInUse = aStatus?.status === '운행중';
       const bIsInUse = bStatus?.status === '운행중';
       const aStart = aStatus?.reservationStart;
       const bStart = bStatus?.reservationStart;
       const aEnd = aStatus?.reservationEnd;
       const bEnd = bStatus?.reservationEnd;
-      const aLastReturn = aStatus?.lastReturnDate;
-      const bLastReturn = bStatus?.lastReturnDate;
 
       if (sortOrder === 'return') {
-        // 복귀예정순: 운행중 차량의 복귀예정 시간 순
-        const aReturnTime = aIsInUse ? aEnd : aLastReturn;
-        const bReturnTime = bIsInUse ? bEnd : bLastReturn;
+        // 복귀예정순: 운행중 차량의 복귀예정 시간이 빠른 순
+        // 1순위: 운행중 차량 (복귀예정 시간 빠른 순)
+        if (aIsInUse && !bIsInUse) return -1;
+        if (!aIsInUse && bIsInUse) return 1;
 
-        // 복귀시간이 있는 차량 우선
-        if (aReturnTime && !bReturnTime) return -1;
-        if (!aReturnTime && bReturnTime) return 1;
-        if (aReturnTime && bReturnTime) {
-          return new Date(aReturnTime).getTime() - new Date(bReturnTime).getTime();
+        // 둘 다 운행중이면 복귀예정 시간 빠른 순
+        if (aIsInUse && bIsInUse) {
+          if (aEnd && bEnd) {
+            return new Date(aEnd).getTime() - new Date(bEnd).getTime();
+          }
+          if (aEnd && !bEnd) return -1;
+          if (!aEnd && bEnd) return 1;
         }
+
+        // 나머지는 차량번호 순
         return a.vehicleNumber.localeCompare(b.vehicleNumber, 'ko');
       }
 
-      // 출차시간순 (기본): 출차시간 임박 > 운행중 > 그외
-      // 출차시간이 있는 대기중 차량
-      const aHasDeparture = !aIsInUse && aStart;
-      const bHasDeparture = !bIsInUse && bStart;
+      // 출차시간순 (기본): 점검필요 (출차 임박 순) > 운행중 > 그외
 
-      // 1순위: 출차시간 임박한 대기중 차량
-      if (aHasDeparture && !bHasDeparture && !bIsInUse) return -1;
-      if (!aHasDeparture && bHasDeparture && !aIsInUse) return 1;
-      if (aHasDeparture && bIsInUse) return -1;
-      if (aIsInUse && bHasDeparture) return 1;
+      // 1순위: 점검필요 차량 (출차까지 남은 시간 순)
+      if (aNeedsInspection && !bNeedsInspection) return -1;
+      if (!aNeedsInspection && bNeedsInspection) return 1;
 
-      // 둘 다 출차시간이 있으면 임박 순
-      if (aHasDeparture && bHasDeparture) {
-        return new Date(aStart).getTime() - new Date(bStart).getTime();
+      // 둘 다 점검필요면 출차시간 임박 순
+      if (aNeedsInspection && bNeedsInspection) {
+        if (aStart && bStart) {
+          return new Date(aStart).getTime() - new Date(bStart).getTime();
+        }
+        if (aStart && !bStart) return -1;
+        if (!aStart && bStart) return 1;
       }
 
       // 2순위: 운행중 차량
@@ -837,13 +841,13 @@ export default function Home() {
                             </p>
                           )}
                           {(() => {
-                            // 운행중: 복귀 예정 시간, 대기중: 최근 복귀 시간
+                            // 운행중: 복귀 예정 시간 (파란색), 대기중: 최근 복귀 시간 (기본)
                             const returnTime = isInUse
                               ? vehicleStatus?.reservationEnd
                               : vehicleStatus?.lastReturnDate;
                             if (!returnTime) return null;
                             return (
-                              <p className={`text-xs ${isInUse ? 'text-purple-600' : 'text-gray-500'}`}>
+                              <p className={`text-xs ${isInUse ? 'text-blue-600' : 'text-gray-500'}`}>
                                 복귀: {formatDateTime(returnTime)}
                               </p>
                             );
@@ -1000,12 +1004,12 @@ export default function Home() {
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                             {(() => {
-                              // 운행중: 복귀 예정 시간, 대기중: 최근 복귀 시간
+                              // 운행중: 복귀 예정 시간 (파란색), 대기중: 최근 복귀 시간 (기본)
                               const returnTime = isInUse
                                 ? vehicleStatus?.reservationEnd
                                 : vehicleStatus?.lastReturnDate;
                               if (!returnTime) return <span className="text-gray-400">-</span>;
-                              return <span className={isInUse ? 'text-purple-600' : ''}>{formatDateTime(returnTime)}</span>;
+                              return <span className={isInUse ? 'text-blue-600' : ''}>{formatDateTime(returnTime)}</span>;
                             })()}
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-orange-600">
