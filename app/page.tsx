@@ -169,6 +169,9 @@ export default function Home() {
       setVehicles([]);
       setHasMore(true);
       fetchVehicles(1, true, []);  // 검색 시에는 우선순위 없이
+    } else {
+      // 검색어 지우면 전체 목록 새로고침
+      refreshData(true);
     }
   }, [search]);
 
@@ -358,8 +361,14 @@ export default function Home() {
       const bIsInUse = bStatus?.status === '운행중';
       const aStart = aStatus?.reservationStart;
       const bStart = bStatus?.reservationStart;
+      const aNextStart = aStatus?.nextReservationStart;
+      const bNextStart = bStatus?.nextReservationStart;
       const aEnd = aStatus?.reservationEnd;
       const bEnd = bStatus?.reservationEnd;
+
+      // 출차 시간 계산 (운행중이면 다음예약, 대기중이면 현재예약)
+      const aTargetTime = aIsInUse ? aNextStart : aStart;
+      const bTargetTime = bIsInUse ? bNextStart : bStart;
 
       if (sortOrder === 'return') {
         // 복귀예정순: 운행중 차량의 복귀예정 시간이 빠른 순
@@ -380,7 +389,10 @@ export default function Home() {
         return a.vehicleNumber.localeCompare(b.vehicleNumber, 'ko');
       }
 
-      // 출차시간순 (기본): 점검필요 (출차 임박 순) > 운행중 > 그외
+      // 출차시간순 (기본): 점검필요 > 운행중+다음예약 > 운행중 > 그외
+      // 점검필요 여부 + 다음 예약 유무로 우선순위 결정
+      const aHasUpcoming = aNeedsInspection || (aIsInUse && aNextStart);
+      const bHasUpcoming = bNeedsInspection || (bIsInUse && bNextStart);
 
       // 1순위: 점검필요 차량 (출차까지 남은 시간 순)
       if (aNeedsInspection && !bNeedsInspection) return -1;
@@ -388,18 +400,27 @@ export default function Home() {
 
       // 둘 다 점검필요면 출차시간 임박 순
       if (aNeedsInspection && bNeedsInspection) {
-        if (aStart && bStart) {
-          return new Date(aStart).getTime() - new Date(bStart).getTime();
+        if (aTargetTime && bTargetTime) {
+          return new Date(aTargetTime).getTime() - new Date(bTargetTime).getTime();
         }
-        if (aStart && !bStart) return -1;
-        if (!aStart && bStart) return 1;
+        if (aTargetTime && !bTargetTime) return -1;
+        if (!aTargetTime && bTargetTime) return 1;
       }
 
-      // 2순위: 운행중 차량
+      // 2순위: 운행중 + 다음예약 있는 차량 (출차시간 임박 순)
+      const aInUseWithNext = aIsInUse && aNextStart;
+      const bInUseWithNext = bIsInUse && bNextStart;
+      if (aInUseWithNext && !bInUseWithNext) return -1;
+      if (!aInUseWithNext && bInUseWithNext) return 1;
+      if (aInUseWithNext && bInUseWithNext) {
+        return new Date(aNextStart).getTime() - new Date(bNextStart).getTime();
+      }
+
+      // 3순위: 운행중 차량 (다음예약 없는)
       if (aIsInUse && !bIsInUse) return -1;
       if (!aIsInUse && bIsInUse) return 1;
 
-      // 3순위: 나머지는 차량번호 순
+      // 4순위: 나머지는 차량번호 순
       return a.vehicleNumber.localeCompare(b.vehicleNumber, 'ko');
     });
   };
@@ -868,7 +889,7 @@ export default function Home() {
                                 {isInUse ? '다음 출차: ' : '출차시간: '}
                                 {formatDateTime(new Date(new Date(targetReservation).getTime() - 4 * 60 * 60 * 1000))}
                               </span>
-                              {needsInspection && !isInUse && (() => {
+                              {(needsInspection || isInUse) && (() => {
                                 const deadline = new Date(targetReservation).getTime() - 4 * 60 * 60 * 1000;
                                 const remaining = deadline - Date.now();
                                 if (remaining > 0) {
@@ -876,11 +897,11 @@ export default function Home() {
                                   const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
                                   return (
                                     <span className={`ml-2 font-medium ${hours < 2 ? 'text-red-600' : 'text-blue-600'}`}>
-                                      (세차점검 {hours}시간 {mins}분 남음)
+                                      ({hours}시간 {mins}분 남음)
                                     </span>
                                   );
                                 } else {
-                                  return <span className="ml-2 font-medium text-red-600">(세차점검 마감)</span>;
+                                  return <span className="ml-2 font-medium text-red-600">(마감)</span>;
                                 }
                               })()}
                             </div>
@@ -1024,11 +1045,13 @@ export default function Home() {
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm">
                             {(() => {
+                              // 운행중이면 다음 예약, 대기중이면 현재 예약
                               const targetReservation = isInUse
                                 ? vehicleStatus?.nextReservationStart
                                 : vehicleStatus?.reservationStart;
-                              if (!targetReservation || isInUse) return <span className="text-gray-400">-</span>;
-                              if (!needsInspection) return <span className="text-gray-400">-</span>;
+                              if (!targetReservation) return <span className="text-gray-400">-</span>;
+                              // 운행중인데 다음 예약이 없거나, 대기중인데 점검필요가 아니면 표시 안함
+                              if (!isInUse && !needsInspection) return <span className="text-gray-400">-</span>;
                               const deadline = new Date(targetReservation).getTime() - 4 * 60 * 60 * 1000;
                               const remaining = deadline - Date.now();
                               if (remaining > 0) {
