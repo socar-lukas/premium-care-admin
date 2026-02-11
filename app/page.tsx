@@ -107,6 +107,7 @@ export default function Home() {
   const observerTarget = useRef<HTMLDivElement>(null);
   const lastFetchTime = useRef<number>(0);
   const isFetching = useRef<boolean>(false);
+  const currentSearchRef = useRef<string>(''); // 현재 검색어 추적
 
   // 점검필요 차량번호 목록을 ref로 관리 (최신 상태 유지)
   const needsInspectionCarNumsRef = useRef<string[]>([]);
@@ -119,6 +120,7 @@ export default function Home() {
       return;
     }
     lastFetchTime.current = now;
+    currentSearchRef.current = ''; // 검색어 초기화
     setPage(1);
     setVehicles([]);
     setHasMore(true);
@@ -163,6 +165,9 @@ export default function Home() {
 
   // 검색어가 변경되면 페이지 리셋하고 새로 fetch
   useEffect(() => {
+    // 현재 검색어 저장 (이전 요청 결과 무시용)
+    currentSearchRef.current = search;
+
     if (search !== '') {
       setActiveFilter('all'); // 검색 시 필터 해제
       setPage(1);
@@ -212,10 +217,14 @@ export default function Home() {
   }, [hasMore, loading, loadingMore]);
 
   const fetchVehicles = async (pageNum: number, isReset: boolean, priorityCarNums: string[] = [], searchQuery?: string) => {
-    if (isFetching.current && isReset) return;
+    // 검색 중에는 스킵하지 않음 (빠른 타이핑 대응)
+    const isSearching = searchQuery !== undefined && searchQuery !== '';
+    if (isFetching.current && isReset && !isSearching) return;
+
+    // 이 요청의 검색어 저장 (결과 적용 시 확인용)
+    const requestSearchQuery = searchQuery !== undefined ? searchQuery : search;
 
     try {
-      isFetching.current = true;
       if (isReset) {
         setLoading(true);
       } else {
@@ -223,9 +232,8 @@ export default function Home() {
       }
 
       const params = new URLSearchParams();
-      const currentSearch = searchQuery !== undefined ? searchQuery : search;
-      if (currentSearch) {
-        params.append('search', currentSearch);
+      if (requestSearchQuery) {
+        params.append('search', requestSearchQuery);
       } else if (priorityCarNums.length > 0) {
         // 검색이 아닐 때만 우선순위 정렬 적용
         params.append('priorityCarNums', priorityCarNums.join(','));
@@ -233,12 +241,25 @@ export default function Home() {
       params.append('page', pageNum.toString());
       params.append('limit', '15');
 
+      isFetching.current = true;
       const res = await fetch(`/api/vehicles?${params}`);
+
+      // 검색어가 변경되었으면 이 결과 무시 (더 최신 검색이 진행 중)
+      if (requestSearchQuery !== currentSearchRef.current) {
+        return;
+      }
+
       if (!res.ok) {
         console.error('Vehicle fetch failed:', res.status, res.statusText);
         return;
       }
       const data = await safeJsonParse<VehiclesResponse>(res, { vehicles: [], pagination: { totalPages: 1 } });
+
+      // 다시 한번 검색어 확인 (응답 처리 중 변경되었을 수 있음)
+      if (requestSearchQuery !== currentSearchRef.current) {
+        return;
+      }
+
       const newVehicles = data.vehicles || [];
       const totalPages = data.pagination?.totalPages || 1;
 
