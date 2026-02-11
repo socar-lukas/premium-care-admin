@@ -97,10 +97,12 @@ export async function GET() {
     // 현재 시간 (UTC 기준, parseKoreanDate도 UTC로 변환되므로 비교 가능)
     const now = new Date();
     const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const next72Hours = new Date(now.getTime() + 72 * 60 * 60 * 1000);
 
     // 디버그 로그
     console.log('Current time (UTC):', now.toISOString());
     console.log('Next 24 hours (UTC):', next24Hours.toISOString());
+    console.log('Next 72 hours (UTC):', next72Hours.toISOString());
 
     // 1. 현재 운행중 차량: state가 "운행중" 이거나 예약시작 4시간 전부터 end 사이인 차량
     const inUseVehicles = reservations.filter(r => {
@@ -124,12 +126,11 @@ export async function GET() {
       return r.start_at_kst >= now && r.start_at_kst <= next24Hours;
     });
 
-    // 3. D+1 점검 필요: D+1 예약 중 예약 시작 9시간 전까지 세차점검 기록이 없는 차량
+    // 3. D+1 점검 필요: D+1 예약 중 예약 시작 24시간 전까지 세차점검 기록이 없는 차량
     // 먼저 D+1 예약의 차량번호들 수집
     const upcomingCarNums = [...new Set(upcomingReservations.map(r => r.car_num))];
 
     // 각 예약별로 점검 필요 여부 판단
-    // 예약 시작 시간 9시간 전부터 현재까지 "세차점검" 기록이 있는지 확인
     const needsInspectionReservations: Reservation[] = [];
 
     if (upcomingCarNums.length > 0) {
@@ -188,15 +189,87 @@ export async function GET() {
       needsInspectionReservations.push(...upcomingReservations);
     }
 
+    // 4. 72H 예약: 24시간 이후 ~ 72시간 내 예약 시작하는 건
+    const upcoming72HReservations = reservations.filter(r => {
+      if (!r.start_at_kst) return false;
+      if (r.state !== '예약') return false;
+      return r.start_at_kst > next24Hours && r.start_at_kst <= next72Hours;
+    });
+    const upcoming72HCarNums = [...new Set(upcoming72HReservations.map(r => r.car_num))];
+
+    // 5. 72H 점검 필요: 72H 예약 중 세차점검 기록이 없는 차량
+    const needsInspection72HReservations: Reservation[] = [];
+
+    if (upcoming72HCarNums.length > 0) {
+      const vehicleData72H = await prisma.vehicle.findMany({
+        where: {
+          vehicleNumber: { in: upcoming72HCarNums }
+        },
+        select: {
+          id: true,
+          vehicleNumber: true,
+          inspections: {
+            where: {
+              inspectionType: '세차점검'
+            },
+            orderBy: {
+              completedAt: 'desc'
+            },
+            take: 1,
+            select: {
+              completedAt: true,
+              inspectionDate: true
+            }
+          }
+        }
+      });
+
+      const lastCarWash72HMap: Record<string, Date | null> = {};
+      for (const v of vehicleData72H) {
+        const lastInspection = v.inspections[0];
+        if (lastInspection) {
+          lastCarWash72HMap[v.vehicleNumber] = lastInspection.completedAt || lastInspection.inspectionDate;
+        } else {
+          lastCarWash72HMap[v.vehicleNumber] = null;
+        }
+      }
+
+      for (const r of upcoming72HReservations) {
+        if (!r.start_at_kst) continue;
+
+        const twentyFourHoursBefore = new Date(r.start_at_kst.getTime() - 24 * 60 * 60 * 1000);
+        const lastCarWash = lastCarWash72HMap[r.car_num];
+
+        if (!lastCarWash || lastCarWash < twentyFourHoursBefore) {
+          needsInspection72HReservations.push(r);
+        }
+      }
+    } else {
+      needsInspection72HReservations.push(...upcoming72HReservations);
+    }
+
+    const needsInspection72HCarNums = [...new Set(needsInspection72HReservations.map(r => r.car_num))];
+
     // 차량별 예약 상태 정보 (차량 목록에서 사용)
-    // 각 차량의 현재 상태: 운행중 / 대기중 + 차량명 + 예약시작시간 + 다음예약시작시간
     const vehicleStatusMap: Record<string, {
       status: '운행중' | '대기중';
       needsInspection: boolean;
+      needs72HInspection: boolean;
       carName: string;
-      reservationStart?: string; // ISO 문자열 (현재/다음 예약 시작시간)
-      nextReservationStart?: string; // ISO 문자열 (운행중인 경우 다음 예약 시작시간)
+      reservationStart?: string;
+      nextReservationStart?: string;
+      lastReturnDate?: string;
     }> = {};
+
+    // 차량별 최근 복귀일 계산
+    const lastReturnDateMap: Record<string, Date> = {};
+    for (const r of reservations) {
+      if (r.end_at_kst && r.end_at_kst <= now) {
+        if (!lastReturnDateMap[r.car_num] || r.end_at_kst > lastReturnDateMap[r.car_num]) {
+          lastReturnDateMap[r.car_num] = r.end_at_kst;
+        }
+      }
+    }
 
     // D+1 예약 차량별 가장 빠른 예약 시작 시간 저장
     const earliestReservationMap: Record<string, Date> = {};
@@ -209,7 +282,6 @@ export async function GET() {
     }
 
     // 모든 예약 데이터에서 차량별 상태 계산
-    // 먼저 차량별로 예약을 시간순 정렬
     const reservationsByCarNum: Record<string, Reservation[]> = {};
     for (const r of reservations) {
       if (!reservationsByCarNum[r.car_num]) {
@@ -217,7 +289,6 @@ export async function GET() {
       }
       reservationsByCarNum[r.car_num].push(r);
     }
-    // 각 차량의 예약을 시작시간 기준 정렬
     for (const carNum of Object.keys(reservationsByCarNum)) {
       reservationsByCarNum[carNum].sort((a, b) => {
         if (!a.start_at_kst) return 1;
@@ -227,18 +298,14 @@ export async function GET() {
     }
 
     for (const r of reservations) {
-      // 운행중 판단: state가 "운행중" 이거나 예약시작 4시간 전부터 end 사이
       const fourHoursBefore = r.start_at_kst ? new Date(r.start_at_kst.getTime() - 4 * 60 * 60 * 1000) : null;
       const isInUse = r.state === '운행중' ||
         (fourHoursBefore && r.end_at_kst && now >= fourHoursBefore && now <= r.end_at_kst);
 
-      // 운행중이면 무조건 운행중으로 설정 (우선순위 높음)
       if (isInUse) {
-        // 운행중인 차량의 다음 예약 찾기
         const carReservations = reservationsByCarNum[r.car_num] || [];
         const nextReservation = carReservations.find(nr => {
           if (!nr.start_at_kst) return false;
-          // 현재 운행중인 예약 이후의 예약 찾기
           if (r.end_at_kst) {
             return nr.start_at_kst > r.end_at_kst;
           }
@@ -249,23 +316,23 @@ export async function GET() {
           ...vehicleStatusMap[r.car_num],
           status: '운행중',
           needsInspection: vehicleStatusMap[r.car_num]?.needsInspection || false,
+          needs72HInspection: vehicleStatusMap[r.car_num]?.needs72HInspection || false,
           carName: r.car_name || vehicleStatusMap[r.car_num]?.carName || '',
           nextReservationStart: nextReservation?.start_at_kst?.toISOString()
         };
       } else if (!vehicleStatusMap[r.car_num]) {
-        // 아직 상태가 없으면 대기중으로 설정
         vehicleStatusMap[r.car_num] = {
           status: '대기중',
           needsInspection: false,
+          needs72HInspection: false,
           carName: r.car_name || ''
         };
       } else if (!vehicleStatusMap[r.car_num].carName && r.car_name) {
-        // carName이 없으면 추가
         vehicleStatusMap[r.car_num].carName = r.car_name;
       }
     }
 
-    // 점검 필요 여부 설정 (D+1 예약이 있고 점검이력이 없는 차량)
+    // 점검 필요 여부 설정 (24H)
     for (const r of needsInspectionReservations) {
       if (vehicleStatusMap[r.car_num]) {
         vehicleStatusMap[r.car_num].needsInspection = true;
@@ -273,6 +340,21 @@ export async function GET() {
         vehicleStatusMap[r.car_num] = {
           status: '대기중',
           needsInspection: true,
+          needs72HInspection: false,
+          carName: r.car_name || ''
+        };
+      }
+    }
+
+    // 72H 점검 필요 여부 설정
+    for (const r of needsInspection72HReservations) {
+      if (vehicleStatusMap[r.car_num]) {
+        vehicleStatusMap[r.car_num].needs72HInspection = true;
+      } else {
+        vehicleStatusMap[r.car_num] = {
+          status: '대기중',
+          needsInspection: false,
+          needs72HInspection: true,
           carName: r.car_name || ''
         };
       }
@@ -285,18 +367,27 @@ export async function GET() {
       }
     }
 
+    // 최근 복귀일 추가
+    for (const carNum of Object.keys(lastReturnDateMap)) {
+      if (vehicleStatusMap[carNum]) {
+        vehicleStatusMap[carNum].lastReturnDate = lastReturnDateMap[carNum].toISOString();
+      }
+    }
+
     // 점검필요 차량번호 (유니크)
     const needsInspectionCarNums = [...new Set(needsInspectionReservations.map(r => r.car_num))];
 
     return NextResponse.json({
       // 통계 카운트 (모두 유니크한 차량 수)
       inUseCount: inUseCarNums.length,
-      upcomingReservationsCount: upcomingCarNums.length, // 예약 차량 수 (유니크)
-      needsInspectionCount: needsInspectionCarNums.length, // 점검필요 차량 수 (유니크)
+      upcomingReservationsCount: upcomingCarNums.length,
+      needsInspectionCount: needsInspectionCarNums.length,
+      needsInspection72HCount: needsInspection72HCarNums.length,
       // 필터링용 차량번호 목록
       inUseCarNums,
       upcomingCarNums,
       needsInspectionCarNums,
+      needsInspection72HCarNums,
       // 차량별 상태 정보 (차량 목록 표시용)
       vehicleStatusMap,
     });

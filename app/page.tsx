@@ -22,10 +22,12 @@ interface ReservationStatsResponse {
   inUseCount?: number;
   upcomingReservationsCount?: number;
   needsInspectionCount?: number;
+  needsInspection72HCount?: number;
   inUseCarNums?: string[];
   upcomingCarNums?: string[];
   needsInspectionCarNums?: string[];
-  vehicleStatusMap?: Record<string, { status: '운행중' | '대기중'; needsInspection: boolean; carName: string; reservationStart?: string; nextReservationStart?: string }>;
+  needsInspection72HCarNums?: string[];
+  vehicleStatusMap?: Record<string, { status: '운행중' | '대기중'; needsInspection: boolean; needs72HInspection: boolean; carName: string; reservationStart?: string; nextReservationStart?: string; lastReturnDate?: string }>;
 }
 
 interface VehiclesResponse {
@@ -74,12 +76,14 @@ export default function Home() {
     inUseCount: 0,
     upcomingReservationsCount: 0,
     needsInspectionCount: 0,
+    needsInspection72HCount: 0,
     inUseCarNums: [] as string[],
     upcomingCarNums: [] as string[],
     needsInspectionCarNums: [] as string[],
-    vehicleStatusMap: {} as Record<string, { status: '운행중' | '대기중'; needsInspection: boolean; carName: string; reservationStart?: string; nextReservationStart?: string }>,
+    needsInspection72HCarNums: [] as string[],
+    vehicleStatusMap: {} as Record<string, { status: '운행중' | '대기중'; needsInspection: boolean; needs72HInspection: boolean; carName: string; reservationStart?: string; nextReservationStart?: string; lastReturnDate?: string }>,
   });
-  const [activeFilter, setActiveFilter] = useState<'all' | 'inUse' | 'upcoming' | 'needsInspection'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'inUse' | 'upcoming' | 'needsInspection' | 'needsInspection72H'>('all');
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [loadingFiltered, setLoadingFiltered] = useState(false);
   const [statsLoaded, setStatsLoaded] = useState(false);
@@ -119,9 +123,11 @@ export default function Home() {
           inUseCount: data.inUseCount || 0,
           upcomingReservationsCount: data.upcomingReservationsCount || 0,
           needsInspectionCount: data.needsInspectionCount || 0,
+          needsInspection72HCount: data.needsInspection72HCount || 0,
           inUseCarNums: data.inUseCarNums || [],
           upcomingCarNums: data.upcomingCarNums || [],
           needsInspectionCarNums: priorityNums,
+          needsInspection72HCarNums: data.needsInspection72HCarNums || [],
           vehicleStatusMap: data.vehicleStatusMap || {},
         });
       }
@@ -354,6 +360,8 @@ export default function Home() {
       fetchFilteredVehicles(reservationStats.upcomingCarNums, statusMap);
     } else if (activeFilter === 'needsInspection') {
       fetchFilteredVehicles(reservationStats.needsInspectionCarNums, statusMap);
+    } else if (activeFilter === 'needsInspection72H') {
+      fetchFilteredVehicles(reservationStats.needsInspection72HCarNums, statusMap);
     } else {
       setFilteredVehicles([]);
     }
@@ -576,92 +584,98 @@ export default function Home() {
       </nav>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 md:py-8">
-        {/* 통계 카드 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8 animate-fade-in-up">
-          {/* 1. 전체 차량 - 클릭 시 필터 해제 */}
+        {/* 통계 카드 - 5개 컴팩트 */}
+        <div className="grid grid-cols-5 gap-2 md:gap-3 mb-6 md:mb-8 animate-fade-in-up">
+          {/* 1. 전체 */}
           <button
             onClick={() => {
               setActiveFilter('all');
               setSearch('');
             }}
-            className={`stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group text-left transition-all ${activeFilter === 'all' && !search ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
+            className={`stat-card rounded-xl p-3 md:p-4 relative overflow-hidden group text-center transition-all ${activeFilter === 'all' && !search ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
           >
-            <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl" style={{ background: 'rgba(102, 176, 255, 0.25)' }}></div>
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
-                  <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
-                  </svg>
-                </div>
-                <h3 className="text-xs font-semibold text-gray-600">전체 차량</h3>
+            <div className="relative flex flex-col items-center">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center mb-1" style={{ background: 'linear-gradient(135deg, #0078FF 0%, #005AFF 100%)' }}>
+                <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <circle cx="8" cy="8" r="3" />
+                  <circle cx="16" cy="8" r="3" />
+                </svg>
               </div>
-              <p className="text-2xl md:text-3xl font-bold" style={{ color: '#0078FF' }}>
-                {loading && stats.totalVehicles === 0 ? <span className="inline-block w-10 h-7 bg-gray-200 rounded animate-pulse"></span> : stats.totalVehicles}
+              <h3 className="text-[10px] md:text-xs font-medium text-gray-500 mb-0.5">전체</h3>
+              <p className="text-xl md:text-2xl font-bold" style={{ color: '#0078FF' }}>
+                {loading && stats.totalVehicles === 0 ? <span className="inline-block w-8 h-6 bg-gray-200 rounded animate-pulse"></span> : stats.totalVehicles}
               </p>
             </div>
           </button>
 
-          {/* 2. 현재 운행중 */}
+          {/* 2. 운행중 */}
           <button
             onClick={() => setActiveFilter(activeFilter === 'inUse' ? 'all' : 'inUse')}
-            className={`stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group text-left transition-all ${activeFilter === 'inUse' ? 'ring-2 ring-green-500 ring-offset-2' : ''}`}
+            className={`stat-card rounded-xl p-3 md:p-4 relative overflow-hidden group text-center transition-all ${activeFilter === 'inUse' ? 'ring-2 ring-green-500 ring-offset-1' : ''}`}
           >
-            <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl" style={{ background: 'rgba(34, 197, 94, 0.2)' }}></div>
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)' }}>
-                  <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <h3 className="text-xs font-semibold text-gray-600">운행중</h3>
+            <div className="relative flex flex-col items-center">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center mb-1" style={{ background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)' }}>
+                <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
               </div>
-              <p className="text-2xl md:text-3xl font-bold" style={{ color: '#16A34A' }}>
+              <h3 className="text-[10px] md:text-xs font-medium text-gray-500 mb-0.5">운행중</h3>
+              <p className="text-xl md:text-2xl font-bold" style={{ color: '#16A34A' }}>
                 {reservationStats.inUseCount}
               </p>
             </div>
           </button>
 
-          {/* 3. D+1 예약 */}
+          {/* 3. 24H점검 */}
+          <button
+            onClick={() => setActiveFilter(activeFilter === 'needsInspection' ? 'all' : 'needsInspection')}
+            className={`stat-card rounded-xl p-3 md:p-4 relative overflow-hidden group text-center transition-all ${activeFilter === 'needsInspection' ? 'ring-2 ring-yellow-500 ring-offset-1' : ''}`}
+          >
+            <div className="relative flex flex-col items-center">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center mb-1" style={{ background: 'linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%)' }}>
+                <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-[10px] md:text-xs font-medium text-gray-500 mb-0.5">24H점검</h3>
+              <p className="text-xl md:text-2xl font-bold" style={{ color: '#F59E0B' }}>
+                {reservationStats.needsInspectionCount}
+              </p>
+            </div>
+          </button>
+
+          {/* 4. 24H출차 */}
           <button
             onClick={() => setActiveFilter(activeFilter === 'upcoming' ? 'all' : 'upcoming')}
-            className={`stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group text-left transition-all ${activeFilter === 'upcoming' ? 'ring-2 ring-orange-500 ring-offset-2' : ''}`}
+            className={`stat-card rounded-xl p-3 md:p-4 relative overflow-hidden group text-center transition-all ${activeFilter === 'upcoming' ? 'ring-2 ring-orange-500 ring-offset-1' : ''}`}
           >
-            <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl" style={{ background: 'rgba(249, 115, 22, 0.2)' }}></div>
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)' }}>
-                  <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h3 className="text-xs font-semibold text-gray-600">24시간 내 출차예정</h3>
+            <div className="relative flex flex-col items-center">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center mb-1" style={{ background: 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)' }}>
+                <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
               </div>
-              <p className="text-2xl md:text-3xl font-bold" style={{ color: '#EA580C' }}>
+              <h3 className="text-[10px] md:text-xs font-medium text-gray-500 mb-0.5">24H출차</h3>
+              <p className="text-xl md:text-2xl font-bold" style={{ color: '#EA580C' }}>
                 {reservationStats.upcomingReservationsCount}
               </p>
             </div>
           </button>
 
-          {/* 4. 점검 필요 */}
+          {/* 5. 72H점검 */}
           <button
-            onClick={() => setActiveFilter(activeFilter === 'needsInspection' ? 'all' : 'needsInspection')}
-            className={`stat-card rounded-2xl p-4 md:p-5 relative overflow-hidden group text-left transition-all ${activeFilter === 'needsInspection' ? 'ring-2 ring-red-500 ring-offset-2' : ''}`}
+            onClick={() => setActiveFilter(activeFilter === 'needsInspection72H' ? 'all' : 'needsInspection72H')}
+            className={`stat-card rounded-xl p-3 md:p-4 relative overflow-hidden group text-center transition-all ${activeFilter === 'needsInspection72H' ? 'ring-2 ring-red-500 ring-offset-1' : ''}`}
           >
-            <div className="absolute top-0 right-0 w-16 h-16 rounded-full blur-2xl" style={{ background: 'rgba(239, 68, 68, 0.2)' }}></div>
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)' }}>
-                  <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <h3 className="text-xs font-semibold text-gray-600">24시간 내 점검필요</h3>
+            <div className="relative flex flex-col items-center">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center mb-1" style={{ background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)' }}>
+                <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
-              <p className="text-2xl md:text-3xl font-bold" style={{ color: '#DC2626' }}>
-                {reservationStats.needsInspectionCount}
+              <h3 className="text-[10px] md:text-xs font-medium text-gray-500 mb-0.5">72H점검</h3>
+              <p className="text-xl md:text-2xl font-bold" style={{ color: '#DC2626' }}>
+                {reservationStats.needsInspection72HCount}
               </p>
             </div>
           </button>
@@ -724,11 +738,11 @@ export default function Home() {
                     onClick={() => setActiveFilter('all')}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
                     style={{
-                      background: activeFilter === 'inUse' ? 'rgba(34, 197, 94, 0.1)' : activeFilter === 'upcoming' ? 'rgba(249, 115, 22, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                      color: activeFilter === 'inUse' ? '#16A34A' : activeFilter === 'upcoming' ? '#EA580C' : '#DC2626'
+                      background: activeFilter === 'inUse' ? 'rgba(34, 197, 94, 0.1)' : activeFilter === 'upcoming' ? 'rgba(249, 115, 22, 0.1)' : activeFilter === 'needsInspection72H' ? 'rgba(168, 85, 247, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                      color: activeFilter === 'inUse' ? '#16A34A' : activeFilter === 'upcoming' ? '#EA580C' : activeFilter === 'needsInspection72H' ? '#9333EA' : '#DC2626'
                     }}
                   >
-                    <span>{activeFilter === 'inUse' ? '운행중' : activeFilter === 'upcoming' ? '24시간 내 출차예정' : '24시간 내 점검필요'}</span>
+                    <span>{activeFilter === 'inUse' ? '운행중' : activeFilter === 'upcoming' ? '24H출차' : activeFilter === 'needsInspection72H' ? '72H점검' : '24H점검'}</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -806,12 +820,19 @@ export default function Home() {
                             </div>
                           )}
                         </div>
-                        {/* 최근 점검일 (시간 포함) */}
-                        {vehicle.inspections && vehicle.inspections[0] && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            점검: {new Date(vehicle.inspections[0].inspectionDate).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        )}
+                        {/* 최근 점검일 & 복귀일 */}
+                        <div className="flex flex-wrap gap-x-3 mt-1">
+                          {vehicle.inspections && vehicle.inspections[0] && (
+                            <p className="text-xs text-gray-500">
+                              점검: {new Date(vehicle.inspections[0].inspectionDate).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
+                          {vehicleStatus?.lastReturnDate && (
+                            <p className="text-xs text-gray-500">
+                              복귀: {new Date(vehicleStatus.lastReturnDate).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
+                        </div>
                         {/* 출차시간: 운행중이면 다음예약, 아니면 현재예약 기준 */}
                         {(() => {
                           // 운행중이면 다음 예약, 아니면 현재 예약
@@ -910,6 +931,9 @@ export default function Home() {
                           최근 점검일
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          최근 복귀일
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           출차시간
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -954,6 +978,13 @@ export default function Home() {
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                             {vehicle.inspections && vehicle.inspections[0] ? (
                               new Date(vehicle.inspections[0].inspectionDate).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {vehicleStatus?.lastReturnDate ? (
+                              new Date(vehicleStatus.lastReturnDate).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}
