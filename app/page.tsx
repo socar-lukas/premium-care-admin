@@ -168,7 +168,7 @@ export default function Home() {
       setPage(1);
       setVehicles([]);
       setHasMore(true);
-      fetchVehicles(1, true, []);  // 검색 시에는 우선순위 없이
+      fetchVehicles(1, true, [], search);  // 검색어를 직접 전달
     } else {
       // 검색어 지우면 전체 목록 새로고침
       refreshData(true);
@@ -178,7 +178,7 @@ export default function Home() {
   // 페이지가 변경되면 추가 데이터 fetch
   useEffect(() => {
     if (page > 1) {
-      fetchVehicles(page, false, search ? [] : needsInspectionCarNumsRef.current);
+      fetchVehicles(page, false, search ? [] : needsInspectionCarNumsRef.current, search || undefined);
     }
   }, [page, search]);
 
@@ -211,7 +211,7 @@ export default function Home() {
     return () => observer.disconnect();
   }, [hasMore, loading, loadingMore]);
 
-  const fetchVehicles = async (pageNum: number, isReset: boolean, priorityCarNums: string[] = []) => {
+  const fetchVehicles = async (pageNum: number, isReset: boolean, priorityCarNums: string[] = [], searchQuery?: string) => {
     if (isFetching.current && isReset) return;
 
     try {
@@ -223,8 +223,9 @@ export default function Home() {
       }
 
       const params = new URLSearchParams();
-      if (search) {
-        params.append('search', search);
+      const currentSearch = searchQuery !== undefined ? searchQuery : search;
+      if (currentSearch) {
+        params.append('search', currentSearch);
       } else if (priorityCarNums.length > 0) {
         // 검색이 아닐 때만 우선순위 정렬 적용
         params.append('priorityCarNums', priorityCarNums.join(','));
