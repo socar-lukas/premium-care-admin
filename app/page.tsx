@@ -876,63 +876,10 @@ export default function Home() {
                             </div>
                           )}
                         </div>
-                        {/* 최근 점검일 & 복귀시간 */}
-                        <div className="flex flex-wrap gap-x-3 mt-1">
-                          {vehicle.inspections && vehicle.inspections[0] && (
-                            <p className="text-xs text-gray-500">
-                              점검: {formatDateTime(vehicle.inspections[0].inspectionDate)}
-                            </p>
-                          )}
-                          {(() => {
-                            // 운행중: 복귀 예정 시간 (파란색), 대기중: 최근 복귀 시간 (기본)
-                            const returnTime = isInUse
-                              ? vehicleStatus?.reservationEnd
-                              : vehicleStatus?.lastReturnDate;
-                            if (!returnTime) return null;
-                            return (
-                              <p className={`text-xs ${isInUse ? 'text-blue-600' : 'text-gray-500'}`}>
-                                복귀: {formatDateTime(returnTime)}
-                              </p>
-                            );
-                          })()}
-                        </div>
-                        {/* 출차시간: 운행중이면 다음예약, 아니면 현재예약 기준 */}
-                        {(() => {
-                          // 운행중이면 다음 예약, 아니면 현재 예약
-                          const targetReservation = isInUse
-                            ? vehicleStatus?.nextReservationStart
-                            : vehicleStatus?.reservationStart;
-
-                          if (!targetReservation) return null;
-
-                          return (
-                            <div className="text-xs mt-1">
-                              <span className="text-orange-600">
-                                {isInUse ? '다음 출차: ' : '출차시간: '}
-                                {formatDateTime(new Date(new Date(targetReservation).getTime() - 4 * 60 * 60 * 1000))}
-                              </span>
-                              {(needsInspection || isInUse) && (() => {
-                                const deadline = new Date(targetReservation).getTime() - 4 * 60 * 60 * 1000;
-                                const remaining = deadline - Date.now();
-                                if (remaining > 0) {
-                                  const hours = Math.floor(remaining / (60 * 60 * 1000));
-                                  const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
-                                  return (
-                                    <span className={`ml-2 font-medium ${hours < 2 ? 'text-red-600' : 'text-blue-600'}`}>
-                                      ({hours}시간 {mins}분 남음)
-                                    </span>
-                                  );
-                                } else {
-                                  return <span className="ml-2 font-medium text-red-600">(마감)</span>;
-                                }
-                              })()}
-                            </div>
-                          );
-                        })()}
-                        {/* 상태 태그 */}
-                        <div className="flex flex-wrap gap-1.5 mt-2">
+                        {/* 상태 태그 - 상단으로 이동 */}
+                        <div className="flex flex-wrap gap-1.5 mt-1 mb-2">
                           {vehicleStatus && (
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
                               isInUse
                                 ? 'bg-green-100 text-green-700'
                                 : 'bg-gray-100 text-gray-600'
@@ -941,9 +888,127 @@ export default function Home() {
                             </span>
                           )}
                           {needsInspection && (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
                               점검필요
                             </span>
+                          )}
+                        </div>
+                        {/* 상태별 정보 표시 */}
+                        <div className="space-y-1.5 text-sm">
+                          {isInUse ? (
+                            /* 운행중: 최근 점검 - 복귀 예정 - 다음 출차 */
+                            <>
+                              {vehicle.inspections && vehicle.inspections[0] && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-400 w-16 flex-shrink-0">최근점검</span>
+                                  <span className="text-gray-700">{formatDateTime(vehicle.inspections[0].inspectionDate)}</span>
+                                </div>
+                              )}
+                              {vehicleStatus?.reservationEnd && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-blue-500 w-16 flex-shrink-0 font-medium">복귀예정</span>
+                                  <span className="text-blue-600 font-medium">{formatDateTime(vehicleStatus.reservationEnd)}</span>
+                                </div>
+                              )}
+                              {vehicleStatus?.nextReservationStart && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-orange-500 w-16 flex-shrink-0 font-medium">다음출차</span>
+                                  <span className="text-orange-600 font-medium">
+                                    {formatDateTime(new Date(new Date(vehicleStatus.nextReservationStart).getTime() - 4 * 60 * 60 * 1000))}
+                                  </span>
+                                  {(() => {
+                                    const deadline = new Date(vehicleStatus.nextReservationStart).getTime() - 4 * 60 * 60 * 1000;
+                                    const remaining = deadline - Date.now();
+                                    if (remaining > 0) {
+                                      const hours = Math.floor(remaining / (60 * 60 * 1000));
+                                      const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+                                      return (
+                                        <span className={`text-xs font-bold ${hours < 2 ? 'text-red-600' : 'text-blue-600'}`}>
+                                          ({hours}시간 {mins}분)
+                                        </span>
+                                      );
+                                    }
+                                    return <span className="text-xs font-bold text-red-600">(마감)</span>;
+                                  })()}
+                                </div>
+                              )}
+                            </>
+                          ) : needsInspection ? (
+                            /* 대기중 + 점검필요: 최근 점검 - 최근 복귀 - 출차시간 */
+                            <>
+                              {vehicle.inspections && vehicle.inspections[0] && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-400 w-16 flex-shrink-0">최근점검</span>
+                                  <span className="text-gray-700">{formatDateTime(vehicle.inspections[0].inspectionDate)}</span>
+                                </div>
+                              )}
+                              {vehicleStatus?.lastReturnDate && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-400 w-16 flex-shrink-0">최근복귀</span>
+                                  <span className="text-gray-700">{formatDateTime(vehicleStatus.lastReturnDate)}</span>
+                                </div>
+                              )}
+                              {vehicleStatus?.reservationStart && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-red-500 w-16 flex-shrink-0 font-medium">출차시간</span>
+                                  <span className="text-red-600 font-medium">
+                                    {formatDateTime(new Date(new Date(vehicleStatus.reservationStart).getTime() - 4 * 60 * 60 * 1000))}
+                                  </span>
+                                  {(() => {
+                                    const deadline = new Date(vehicleStatus.reservationStart).getTime() - 4 * 60 * 60 * 1000;
+                                    const remaining = deadline - Date.now();
+                                    if (remaining > 0) {
+                                      const hours = Math.floor(remaining / (60 * 60 * 1000));
+                                      const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+                                      return (
+                                        <span className={`text-xs font-bold ${hours < 2 ? 'text-red-600' : 'text-orange-500'}`}>
+                                          ({hours}시간 {mins}분)
+                                        </span>
+                                      );
+                                    }
+                                    return <span className="text-xs font-bold text-red-600">(마감)</span>;
+                                  })()}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            /* 대기중 (점검불필요): 최근 복귀 - 최근 점검 - 출차시간 */
+                            <>
+                              {vehicleStatus?.lastReturnDate && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-400 w-16 flex-shrink-0">최근복귀</span>
+                                  <span className="text-gray-700">{formatDateTime(vehicleStatus.lastReturnDate)}</span>
+                                </div>
+                              )}
+                              {vehicle.inspections && vehicle.inspections[0] && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-400 w-16 flex-shrink-0">최근점검</span>
+                                  <span className="text-gray-700">{formatDateTime(vehicle.inspections[0].inspectionDate)}</span>
+                                </div>
+                              )}
+                              {vehicleStatus?.reservationStart && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-orange-500 w-16 flex-shrink-0 font-medium">출차시간</span>
+                                  <span className="text-orange-600 font-medium">
+                                    {formatDateTime(new Date(new Date(vehicleStatus.reservationStart).getTime() - 4 * 60 * 60 * 1000))}
+                                  </span>
+                                  {(() => {
+                                    const deadline = new Date(vehicleStatus.reservationStart).getTime() - 4 * 60 * 60 * 1000;
+                                    const remaining = deadline - Date.now();
+                                    if (remaining > 0) {
+                                      const hours = Math.floor(remaining / (60 * 60 * 1000));
+                                      const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+                                      return (
+                                        <span className={`text-xs font-bold ${hours < 2 ? 'text-red-600' : 'text-blue-600'}`}>
+                                          ({hours}시간 {mins}분)
+                                        </span>
+                                      );
+                                    }
+                                    return <span className="text-xs font-bold text-red-600">(마감)</span>;
+                                  })()}
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       </Link>
