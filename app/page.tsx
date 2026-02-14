@@ -907,7 +907,7 @@ export default function Home() {
                               {vehicleStatus?.reservationEnd && (
                                 <div className="flex items-center gap-2">
                                   <span className="text-blue-500 w-16 flex-shrink-0 font-medium">복귀예정</span>
-                                  <span className="text-blue-600 font-medium">{formatDateTime(vehicleStatus.reservationEnd)}</span>
+                                  <span className="text-blue-600 font-medium">{formatDateTime(new Date(new Date(vehicleStatus.reservationEnd).getTime() + 3 * 60 * 60 * 1000))}</span>
                                 </div>
                               )}
                               {vehicleStatus?.nextReservationStart && (
@@ -945,7 +945,7 @@ export default function Home() {
                               {vehicleStatus?.lastReturnDate && (
                                 <div className="flex items-center gap-2">
                                   <span className="text-gray-400 w-16 flex-shrink-0">최근복귀</span>
-                                  <span className="text-gray-700">{formatDateTime(vehicleStatus.lastReturnDate)}</span>
+                                  <span className="text-gray-700">{formatDateTime(new Date(new Date(vehicleStatus.lastReturnDate).getTime() + 3 * 60 * 60 * 1000))}</span>
                                 </div>
                               )}
                               {vehicleStatus?.reservationStart && (
@@ -977,7 +977,7 @@ export default function Home() {
                               {vehicleStatus?.lastReturnDate && (
                                 <div className="flex items-center gap-2">
                                   <span className="text-gray-400 w-16 flex-shrink-0">최근복귀</span>
-                                  <span className="text-gray-700">{formatDateTime(vehicleStatus.lastReturnDate)}</span>
+                                  <span className="text-gray-700">{formatDateTime(new Date(new Date(vehicleStatus.lastReturnDate).getTime() + 3 * 60 * 60 * 1000))}</span>
                                 </div>
                               )}
                               {vehicle.inspections && vehicle.inspections[0] && (
@@ -1113,11 +1113,13 @@ export default function Home() {
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                             {(() => {
                               // 운행중: 복귀 예정 시간 (파란색), 대기중: 최근 복귀 시간 (기본)
+                              // 고객 예약 반납시간 + 3시간
                               const returnTime = isInUse
                                 ? vehicleStatus?.reservationEnd
                                 : vehicleStatus?.lastReturnDate;
                               if (!returnTime) return <span className="text-gray-400">-</span>;
-                              return <span className={isInUse ? 'text-blue-600' : ''}>{formatDateTime(returnTime)}</span>;
+                              const adjustedTime = new Date(new Date(returnTime).getTime() + 3 * 60 * 60 * 1000);
+                              return <span className={isInUse ? 'text-blue-600' : ''}>{formatDateTime(adjustedTime)}</span>;
                             })()}
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-orange-600">
